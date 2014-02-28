@@ -32,14 +32,55 @@ filter_token_list = (list)->
     valid_tokens.push t if is_valid_token t
   valid_tokens
 
+indent_str = (amount, str)->
+  o = []
+  `for(var i=0; i < amount; ++i) { o.push(str); }`
+  o.join ''
+
+
+class CTokenList
+  @NEWLINE = 1
+  @INDENT = 2
+  @OUTDENT = 3
+  constructor: (@indent_str="    ")->
+    @tokens = []
+
+  add: (tokens)->
+    for t in tokens
+      @tokens.push t if is_valid_token(t)
+
+  toString: ->
+    o = []
+    indent = 0
+    for t in @tokens
+      switch(t)
+        when CTokenList.NEWLINE
+          o.push "\n"
+          o.push indent_str(indent, @indent_str)
+        when CTokenList.INDENT then indent++
+        when CTokenList.OUTDENT then indent--
+        when ';' then o.push t
+        when '(' then o.push t
+        when '()' then o.push t
+        else
+          o.push " ", t
+
+    console.log "--------------"
+    console.log o
+    console.log "--------------"
+    o.join('')
+
 
 class CTpl
   constructor: (@_indent_str="    ")->
     @_indent = 0
     @_buffer = []
+    @_tokens = new CTokenList
 
-  l: (txt)->
-    @_buffer.push [@_indent_chars(), txt].join('')
+  l: (tokens...)->
+
+    #@_buffer.push [@_indent_chars(), txt].join('')
+    @_tokens.add tokens.concat( [CTokenList.NEWLINE]  )
 
 
   tokens: (list...)->
@@ -50,7 +91,10 @@ class CTpl
         when '' then null
         when ';' then o[o.length - 1] += ';'
         else o.push t
-    @l o.join(' ')
+    #@l o.join(' ')
+    @_buffer.push [@_indent_chars(), o.join(' ')].join('')
+
+    @_tokens.add list
 
 
   wrapped: (start, end, contents...)->
@@ -66,13 +110,40 @@ class CTpl
 
   indent: (txt, callback)->
     @l(txt)
+    @_tokens.add [CTokenList.INDENT]
     @_indent++
     callback()
+    @_tokens.add [CTokenList.OUTDENT]
     @_indent--
+
+  indented: (tokens...)->
+    # skip empty blocks
+    return if tokens.length == 0
+    # get the callback (the last arg)
+    callback = tokens[ tokens.length - 1 ]
+    console.log callback
+    throw new Error("Invalid callback") unless _.isFunction( callback )
+    @_tokens.add tokens[..-2]
+    @_tokens.add [CTokenList.INDENT, CTokenList.NEWLINE]
+    callback()
+    @_tokens.add [CTokenList.OUTDENT, CTokenList.NEWLINE ]
+
+
+  braced: (tokens...)->
+    # skip empty blocks
+    if tokens.length == 0
+      @_tokens.add [ "{", "}" ]
+      return
+    # get the callback (the last arg)
+    callback = tokens[ tokens.length - 1 ]
+    text_tokens = tokens[..-2]
+    @indented text_tokens.concat(["{"])..., callback
+    @_tokens.add [ "}" ]
 
   braces: (txt, callback)->
     @indent( "#{txt} {", callback )
     @l("}")
+    #@_tokens.add ["}"]
 
   toString: -> @_buffer.join("\n")
 

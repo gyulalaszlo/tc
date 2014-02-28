@@ -39,7 +39,10 @@ build_class_files = (filename, units)->
 
   for k, v of meta
     class_tpl = require './templates/class'
-    console.log templates.run_c_tpl class_tpl, meta[k]
+    res = templates.run_c_tpl class_tpl, meta[k]
+    console.log res.toString()
+    console.log res._tokens
+    console.log res._tokens.toString()
 
 each_matching_declaration = (units, tag, callback)->
   for unit in units
