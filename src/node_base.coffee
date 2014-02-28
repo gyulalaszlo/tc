@@ -14,7 +14,7 @@ register = (klasses...)->
 autoconstruct = (data, parent=null)->
   key = data[0]
   klass = all[key]
-  throw new Error("Cannot find Node class: '#{key}'") unless klass
+  throw new Error("Cannot find Node class: '#{key}' data: #{JSON.stringify(data)}") unless klass
   node = new klass()
   node.klass = klass
   node.parent = parent
@@ -33,7 +33,8 @@ autoconstruct = (data, parent=null)->
 
 make_type = ( key, fields, methods={})->
   klass = ()->
-  _.extend klass, { key: key, fields: fields },
+  tags = if methods.tags then methods.tags else []
+  _.extend klass, { key: key, fields: fields, tags: tags },
   _.extend klass.prototype, Node.prototype,  methods
   register( klass )
 

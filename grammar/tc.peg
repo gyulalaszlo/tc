@@ -32,11 +32,12 @@ StatementList "Statement List"
 
 Statement "Statement"
   = TypeStatement
+  / MethodList
 
 ////////////////////////////////////////////////////////////////////////////////
 
 TypeStatement "Type Statement"
-  = name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE { return ["TYPE", name, definition]; }
+  = name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE { return ["TYPEDECL", name, definition]; }
 
 
 TypeStatementDeclaration "Type Declaration"
@@ -85,3 +86,43 @@ Identifier "identifier"
 IdentifierName
   = start:[a-zA-Z_] cont:[a-zA-Z0-9_]* { return [start, cont.join("")].join(""); }
 
+////////////////////////////////////////////////////////////////////////////////
+
+MethodList "Method list"
+  = access:MethodAccessor WS name:Identifier
+    WS "=" WS body:MethodListBody SE
+    { return ["METHODS", name, access, body ]; }
+
+MethodListBody "Method List body"
+  //= "{" WS "}"
+  = "{" WS  decls:MethodDeclaration* "}" { return decls; }
+
+MethodDeclaration "Method Declaration"
+  //= name:Identifier WS "=" WS //"{" WS "}" WS
+  = name:Identifier WS "=" WS func:FunctionDeclaration
+    { return ["METHOD", name, func]; }
+    //{ return ["METHOD", name]; }
+
+MethodAccessor "Method acess controll"
+  = "public"
+  / "protected"
+  / "private"
+
+
+FunctionDeclaration "Function declaration"
+  = "fn" WS "(" WS args:FunctionDeclarationArgumentList ")" WS body:FunctionBody 
+  //= "fn" WS "(" WS ")" WS body:FunctionBody
+  //= "fn" WS "(" WS ")" WS
+    { return ["FUNC", args, body]; }
+
+FunctionDeclarationArgumentList
+  = first:VariableDeclaration_ WS more:FunctionArgumentPlus*
+    { return [ "ARGS", first, more ]}
+  / { return [] }
+
+FunctionArgumentPlus
+  = ',' WS var_decl:VariableDeclaration_ WS { return ["ARG", var_decl]; }
+
+
+FunctionBody
+  = "{" WS  "}" WS { return []; }

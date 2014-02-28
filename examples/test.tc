@@ -1,0 +1,43 @@
+package plugin_base
+
+type Id = alias u32
+
+type ParameterMeta = struct {
+  f64 min
+  f64 max
+
+  f64 default
+}
+
+// A single modulation slot
+type ModulationSlot = struct {
+  Id modulator_id
+  Id parameter_id
+
+  f64 amount
+}
+
+
+type IdGenerator = class {
+  Id id;
+}
+
+
+public IdGenerator = {
+
+  Constructor = fn() {}
+
+  //// empty constructor to start from zero
+  //Constructor = fn() {
+  //}
+
+  // if the start is fixed
+  Constructor = fn ( Id start, Id stepsize ) {
+  }
+
+  //Destructor = fn() {}
+
+  //Next = fn() Id {
+////    return id++;
+  //}
+}
