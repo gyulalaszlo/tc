@@ -1,0 +1,16 @@
+{
+  "name": "tc",
+  "version": "0.0.0",
+  "description": "TC compiler",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Gyula Laszlo / Monkeykingz Audio",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "pegjs": "~0.8.0",
+    "coffee-script": "~1.7.1",
+    "underscore": "~1.6.0"
+  }
+}

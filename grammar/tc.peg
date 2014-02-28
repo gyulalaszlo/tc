@@ -1,0 +1,87 @@
+start
+  = package:PackageDecl contents:Contents { return ["COMPILATION_UNIT", package, contents ]; }
+
+NL_CHARS = [\n\r]
+
+COMMENT "Comment"
+  = "//" (!NL_CHARS . )*
+
+
+WS_PART
+  = COMMENT
+  / [\t\v\f\n\r \u00A0\uFEFF]+
+
+WS "whitespace"
+  = WS_PART*
+
+SE "Statement Terminator ';'"
+  = [;\n\r] WS?
+
+////////////////////////////////////////////////////////////////////////////////
+
+PackageDecl "Package declaration"
+  = "package" WS name:Identifier SE { return [ "PACKAGE", name  ] };
+
+
+Contents "Compilation Unit contents"
+  = statements:StatementList { return [ "CONTENTS", statements ]; }
+
+
+StatementList "Statement List"
+  = Statement*
+
+Statement "Statement"
+  = TypeStatement
+
+////////////////////////////////////////////////////////////////////////////////
+
+TypeStatement "Type Statement"
+  = name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE { return ["TYPE", name, definition]; }
+
+
+TypeStatementDeclaration "Type Declaration"
+  = "type" WS name: Identifier WS { return name; }
+
+
+TypeDefinition_ "Type Definition"
+  = s:StructDefinition_ { return s; }
+  / a:AliasDefinition_ { return a; }
+  / d:ClassDefinition_ { return d; }
+
+////////////////////////////////////////////////////////////////////////////////
+
+ClassDefinition_
+  = "class" WS fields:StructFieldList_ { return ["CLASS", fields]; }
+
+
+////////////////////////////////////////////////////////////////////////////////
+StructDefinition_
+  = "struct" WS fields:StructFieldList_ { return ["STRUCT", fields]; }
+
+
+StructFieldList_
+  = "{" WS fields:FieldDeclaration* "}" { return ["FIELDS", fields]; }
+
+
+FieldDeclaration "Struct Field Declaration"
+  = decl:VariableDeclaration_ SE { return decl; }
+
+VariableDeclaration_ "Variable Declaration"
+  = type:TypeName_ WS name:Identifier { return ["VAR", type, name ]; }
+
+////////////////////////////////////////////////////////////////////////////////
+
+AliasDefinition_ "Alias"
+  = "alias" WS name:TypeName_ { return ["ALIAS", name];  }
+
+TypeName_ "Type Name"
+  = name:Identifier { return ["TYPE", name];  }
+
+////////////////////////////////////////////////////////////////////////////////
+
+Identifier "identifier"
+  = name:IdentifierName { return ["IDENTIFIER", name];  }
+
+IdentifierName
+  = start:[a-zA-Z_] cont:[a-zA-Z0-9_]* { return [start, cont.join("")].join(""); }
+
