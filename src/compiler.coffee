@@ -2,6 +2,7 @@ _ = require 'underscore'
 
 node = require './node_base'
 parser_helper = require './parser_helper'
+templates = require './templates'
 
 # register the node types
 require './node_types'
@@ -12,8 +13,9 @@ ClassFileTemplates = require './templates/class_file'
 parser_helper.with_parser "#{__dirname}/../grammar/tc.peg", (parser)->
   parser.parse_file "examples/test.tc", (res)->
     unit = node.autoconstruct(res)
-    build_types_file( 'example', [unit] )
+    #build_types_file( 'example', [unit] )
     build_class_files( 'example', [unit] )
+
 
 
 
@@ -24,30 +26,20 @@ build_types_file = (filename, units)->
         console.log render_with_templates(TypesFileTemplates, decl.as)
 
 build_class_files = (filename, units)->
-  methods = {}
-  klasses = {}
+  meta = {}
   each_matching_declaration units, "typedecl", (decl)->
-
     if decl.as.has_tag 'class'
       key = decl.name.text
-      klasses[key] = render_with_templates(ClassFileTemplates, decl.as)
+      meta[key] = { type: decl }
 
   each_matching_declaration units, "method_set", (decl)->
     key = decl.name.toString()
-    methods[key] = [] unless methods[key]
-    methods[key].push render_with_templates(ClassFileTemplates, decl)
+    meta[key].methods ||= []
+    meta[key].methods.push decl
 
-  #console.log klasses
-  #console.log JSON.stringify( methods)
-
-  for k, v of klasses
-    contents = ["class #{k}", "{"]
-    contents.push klasses[k]
-    contents.push methods[k].join("\n\n")
-    contents.push "};"
-    console.log contents.join("\n")
-
-
+  for k, v of meta
+    class_tpl = require './templates/class'
+    console.log templates.run_c_tpl class_tpl, meta[k]
 
 each_matching_declaration = (units, tag, callback)->
   for unit in units
@@ -72,9 +64,6 @@ render_with_templates = (templates, node)->
     o = o.replace field_regexp, tpl_list.join("")
 
   o
-
-
-
 
 
   #ALIAS: (a)->"typedef #{a.original.name} #{a.parent.name};"

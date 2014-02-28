@@ -50,6 +50,9 @@ node.make_type "CLASS", ["layout"],
 
 node.make_type "METHODS", ["name", "access", "body"], tags: ["method_set"]
 node.make_type "METHOD", ["name", "func"],
+  is_constructor_or_destructor: ->
+    return true if @name.text in ['Constructor', 'Destructor']
+    false
   real_name: ->
     return switch @name.text
       # constructors and destructors reference their parent method
@@ -59,20 +62,24 @@ node.make_type "METHOD", ["name", "func"],
       # otherwise its a normal method
       else @name.text
 
-node.make_type "FUNC", ["args", "body"]
-node.make_type "ARGS", ["first", "more"],
-  all: ->
-    o = []
-    o.push @first
-    o.push @more...
-    o
-    #@first, @more
-  to_c: -> 
-    children = (child.to_c() for child in @all())
+  return_type: ->
+    return "" if @is_constructor_or_destructor()
+    return "void" if @func.ret.list.length == 0
+    (l.toString() for l in @func.ret.list ).join(', ')
+
+node.make_type "FUNC", ["args", "body", "ret"]
+node.make_type "ARGS", ["all"],
+  to_c: ->
+    children = (child.to_c() for child in @all)
     #console.log @children
     children.join(', ')
 
 node.make_type "ARG", ["decl"],
   to_c: -> @decl.to_c()
 node.make_type "TYPE", ["name"]
+
+node.make_type "TYPELIST", ["list"],
+  to_func_ret_c: ->
+    console.log @list
+    (l.toString() for l in @list ).join(', ')
 

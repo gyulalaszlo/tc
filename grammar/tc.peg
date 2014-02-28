@@ -94,14 +94,11 @@ MethodList "Method list"
     { return ["METHODS", name, access, body ]; }
 
 MethodListBody "Method List body"
-  //= "{" WS "}"
   = "{" WS  decls:MethodDeclaration* "}" { return decls; }
 
 MethodDeclaration "Method Declaration"
-  //= name:Identifier WS "=" WS //"{" WS "}" WS
   = name:Identifier WS "=" WS func:FunctionDeclaration
     { return ["METHOD", name, func]; }
-    //{ return ["METHOD", name]; }
 
 MethodAccessor "Method acess controll"
   = "public"
@@ -110,19 +107,37 @@ MethodAccessor "Method acess controll"
 
 
 FunctionDeclaration "Function declaration"
-  = "fn" WS "(" WS args:FunctionDeclarationArgumentList ")" WS body:FunctionBody 
-  //= "fn" WS "(" WS ")" WS body:FunctionBody
-  //= "fn" WS "(" WS ")" WS
-    { return ["FUNC", args, body]; }
+  = "fn" WS args:FunctionArgList ret:FunctionReturnType body:FunctionBody
+    { return ["FUNC", args, body, ret]; }
+
+FunctionArgList "Type list for function parameters/return values"
+  = "(" WS args:FunctionDeclarationArgumentList ")" WS { return args; }
+
+FunctionReturnType
+  = list: TypeList { return list; }
 
 FunctionDeclarationArgumentList
-  = first:VariableDeclaration_ WS more:FunctionArgumentPlus*
-    { return [ "ARGS", first, more ]}
+  = first:FunctionArgumentFirst WS more:FunctionArgumentMore*
+    { return [ "ARGS", [first].concat( more ) ];}
   / { return [] }
 
-FunctionArgumentPlus
+FunctionArgumentFirst
+  = var_decl:VariableDeclaration_ { return ["ARG", var_decl]; }
+
+
+FunctionArgumentMore
   = ',' WS var_decl:VariableDeclaration_ WS { return ["ARG", var_decl]; }
 
 
 FunctionBody
   = "{" WS  "}" WS { return []; }
+
+
+TypeList "A list of types"
+  = first:Typename_ WS more:MoreTypes* { return ["TYPELIST", [first].concat(more)]; }
+  / { return ["TYPELIST", []]; }
+
+MoreTypes = "," WS more:Typename_ WS
+
+Typename_ "Type name"
+  = name:Identifier { return name; }

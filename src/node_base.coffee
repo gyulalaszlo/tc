@@ -5,6 +5,10 @@ class Node
   has_tag: (name)->
     _.some( all[@klass.key].tags, (e)-> e == name )
 
+  toString: ->
+    children = (f.toString() for f in @klass.fields)
+    "%{ key: #{@klass.key} ( #{children.join(',')} ) }%"
+
 all = {}
 
 register = (klasses...)->

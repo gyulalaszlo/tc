@@ -25,19 +25,24 @@ type IdGenerator = class {
 
 public IdGenerator = {
 
-  Constructor = fn() {}
 
   //// empty constructor to start from zero
-  //Constructor = fn() {
-  //}
+  Constructor = fn() {
+  }
 
   // if the start is fixed
   Constructor = fn ( Id start, Id stepsize ) {
   }
 
-  //Destructor = fn() {}
+  Destructor = fn() {}
 
-  //Next = fn() Id {
+  Next = fn() Id {
 ////    return id++;
-  //}
+  }
+
+  Reset = fn() {
+  }
+
+  setStepSize = fn( Id stepsize ) {}
+  getStepSize = fn() Id {}
 }
