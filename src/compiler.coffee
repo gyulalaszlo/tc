@@ -16,10 +16,11 @@ parser_helper.with_parser "#{__dirname}/../grammar/tc.peg", (parser)->
   parser.parse_file "examples/test.tc", (res)->
     unit = node.autoconstruct(res)
     #build_types_file( 'example', [unit] )
-    build_class_files( 'example', [unit] )
+    #build_class_files( 'example', [unit] )
 
     pack = tc_packages.from_units [unit]
-    console.log pack
+    #console.log pack
+    #console.log JSON.stringify(pack.as_json(), null, 2 )
 
 
 
