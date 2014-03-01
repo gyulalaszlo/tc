@@ -1,5 +1,5 @@
 start
-  = package:PackageDecl contents:Contents { return ["COMPILATION_UNIT", package, contents ]; }
+  = package:PackageDecl contents:Contents !. { return ["COMPILATION_UNIT", package, contents ]; }
 
 NL_CHARS = [\n\r]
 
