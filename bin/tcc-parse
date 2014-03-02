@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+
+var program = require('commander');
+var coffee = require('coffee-script/register');
+var compiler = require('../src/compiler');
+
+program
+  .option( '-r, --root [dir]', 'The root of the package tree', 'examples' )
+  .option( '-p, --save-parse-tree', 'Save the parsed tree', false )
+  .option( '-t, --save-type-tree', 'Save the type tree', false )
+  //.option('-f, --force', 'force installation')
+  .parse(process.argv);
+
+var pkgs = program.args;
+if (!pkgs.length) {
+  console.error('packages required');
+  process.exit(1);
+}
+
+compiler.compile_packages(pkgs, program);

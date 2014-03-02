@@ -1,5 +1,7 @@
 package plugin_base
 
+type u32 = C uint32_t
+
 type Id = alias u32
 
 type ParameterMeta = struct {

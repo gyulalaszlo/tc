@@ -1,0 +1,33 @@
+package monkeybase
+
+type Id = alias u32
+
+type IdGenerator = class {
+  Id id;
+}
+
+
+public IdGenerator = {
+
+
+  //// empty constructor to start from zero
+  Constructor = fn() {
+  }
+
+  // if the start is fixed
+  Constructor = fn ( Id start ) {
+  }
+
+  Destructor = fn() {}
+
+  // Get the id and advance the generator
+  Next = fn() Id {
+////    return id++;
+  }
+
+
+  // Reset the counter for the generator
+  Reset = fn() {
+  }
+
+}

@@ -1,5 +1,5 @@
 start
-  = package:PackageDecl contents:Contents !. { return ["COMPILATION_UNIT", package, contents ]; }
+  = package:PackageDecl contents:Contents !. ->{{ COMPILATION_UNIT with package, contents }}
 
 NL_CHARS = [\n\r]
 
@@ -20,11 +20,11 @@ SE "Statement Terminator ';'"
 ////////////////////////////////////////////////////////////////////////////////
 
 PackageDecl "Package declaration"
-  = "package" WS name:Identifier SE { return [ "PACKAGE", name  ] };
+  = "package" WS name:Identifier SE ->{{ PACKAGE with  name }}
 
 
 Contents "Compilation Unit contents"
-  = statements:StatementList { return [ "CONTENTS", statements ]; }
+  = declarations:StatementList ->{{ CONTENTS with declarations }}
 
 
 StatementList "Statement List"
@@ -37,7 +37,8 @@ Statement "Statement"
 ////////////////////////////////////////////////////////////////////////////////
 
 TypeStatement "Type Statement"
-  = name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE { return ["TYPEDECL", name, definition]; }
+  //= name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE // { return ["TYPEDECL", name, definition]; }
+  = name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE ->{{ TYPEDECL with name, definition }}
 
 
 TypeStatementDeclaration "Type Declaration"
@@ -47,41 +48,47 @@ TypeStatementDeclaration "Type Declaration"
 TypeDefinition_ "Type Definition"
   = s:StructDefinition_ { return s; }
   / a:AliasDefinition_ { return a; }
+  / c:CTypeDefinition_ { return c; }
   / d:ClassDefinition_ { return d; }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 ClassDefinition_
-  = "class" WS fields:StructFieldList_ { return ["CLASS", fields]; }
+  = "class" WS fields:StructFieldList_ ->{{ CLASS with fields }}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 StructDefinition_
-  = "struct" WS fields:StructFieldList_ { return ["STRUCT", fields]; }
+  = "struct" WS fields:StructFieldList_ ->{{ STRUCT with fields }}
 
 
 StructFieldList_
-  = "{" WS fields:FieldDeclaration* "}" { return ["FIELDS", fields]; }
+  = "{" WS fields:FieldDeclaration* "}" ->{{ FIELDS with fields }}
 
 
 FieldDeclaration "Struct Field Declaration"
   = decl:VariableDeclaration_ SE { return decl; }
 
 VariableDeclaration_ "Variable Declaration"
-  = type:TypeName_ WS name:Identifier { return ["VAR", type, name ]; }
+  = type:TypeName_ WS name:Identifier ->{{ VAR with type, name }}
+
+////////////////////////////////////////////////////////////////////////////////
+
+CTypeDefinition_ "A C type definition"
+  = "C" WS name:TypeName_ ->{{ CTYPE with name  }}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 AliasDefinition_ "Alias"
-  = "alias" WS name:TypeName_ { return ["ALIAS", name];  }
+  = "alias" WS original:TypeName_ ->{{ ALIAS with original }}
 
 TypeName_ "Type Name"
-  = name:Identifier { return ["TYPE", name];  }
+  = name:Identifier  ->{{ TYPE with name }}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 Identifier "identifier"
-  = name:IdentifierName { return ["IDENTIFIER", name];  }
+  = text:IdentifierName  ->{{ IDENTIFIER with text }}
 
 IdentifierName
   = start:[a-zA-Z_] cont:[a-zA-Z0-9_]* { return [start, cont.join("")].join(""); }
@@ -91,14 +98,14 @@ IdentifierName
 MethodList "Method list"
   = access:MethodAccessor WS name:Identifier
     WS "=" WS body:MethodListBody SE
-    { return ["METHODS", name, access, body ]; }
+    ->{{ METHODS with name, access, body }}
 
 MethodListBody "Method List body"
   = "{" WS  decls:MethodDeclaration* "}" { return decls; }
 
 MethodDeclaration "Method Declaration"
   = name:Identifier WS "=" WS func:FunctionDeclaration
-    { return ["METHOD", name, func]; }
+    ->{{ METHOD with name, func }}
 
 MethodAccessor "Method acess controll"
   = "public"
@@ -107,8 +114,8 @@ MethodAccessor "Method acess controll"
 
 
 FunctionDeclaration "Function declaration"
-  = "fn" WS args:FunctionArgList ret:FunctionReturnType body:FunctionBody
-    { return ["FUNC", args, body, ret]; }
+  = "fn" WS args:FunctionArgList returns:FunctionReturnType body:FunctionBody
+    ->{{ FUNC with args, body, returns }}
 
 FunctionArgList "Type list for function parameters/return values"
   = "(" WS args:FunctionDeclarationArgumentList ")" WS { return args; }
@@ -118,15 +125,16 @@ FunctionReturnType
 
 FunctionDeclarationArgumentList
   = first:FunctionArgumentFirst WS more:FunctionArgumentMore*
-    { return [ "ARGS", [first].concat( more ) ];}
-  / { return [] }
+    //{ return [ "ARGS", [first].concat( more ) ];}
+    { return { _type: "ARGS", list: [first].concat( more ) };}
+  / { return { _type: "ARGS", list: []} }
 
 FunctionArgumentFirst
-  = var_decl:VariableDeclaration_ { return ["ARG", var_decl]; }
+  = decl:VariableDeclaration_ ->{{ ARG with decl }}
 
 
 FunctionArgumentMore
-  = ',' WS var_decl:VariableDeclaration_ WS { return ["ARG", var_decl]; }
+  = ',' WS decl:VariableDeclaration_ WS ->{{ ARG with decl }}
 
 
 FunctionBody
@@ -134,10 +142,10 @@ FunctionBody
 
 
 TypeList "A list of types"
-  = first:Typename_ WS more:MoreTypes* { return ["TYPELIST", [first].concat(more)]; }
-  / { return ["TYPELIST", []]; }
+  = first:Typename_ WS more:MoreTypes* { return { _type:"TYPELIST", list: [first].concat(more) }; }
+  / { return {_type:"TYPELIST", list:[] }; }
 
 MoreTypes = "," WS more:Typename_ WS
 
 Typename_ "Type name"
-  = name:Identifier { return name; }
+  = name:Identifier ->{{ TYPENAME with name }}
