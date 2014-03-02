@@ -8,7 +8,8 @@ program
   .option( '-r, --root [dir]', 'The root of the package tree', 'examples' )
   .option( '-p, --save-parse-tree', 'Save the parsed tree', false )
   .option( '-t, --save-type-tree', 'Save the type tree', false )
-  //.option('-f, --force', 'force installation')
+
+  .option('-v, --verbose', 'More status messages.')
   .parse(process.argv);
 
 var pkgs = program.args;

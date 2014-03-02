@@ -1,9 +1,17 @@
 package monkeybase
 
+type u32 = C uint32_t
 type Id = alias u32
 
 type IdGenerator = class {
   Id id;
+}
+
+type IdGeneratorWrapper = class {
+  IdGenerator g
+  IdGenerator f
+  Id i
+  u32 uses
 }
 
 

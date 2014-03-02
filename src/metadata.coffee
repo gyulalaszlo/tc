@@ -37,7 +37,7 @@ class JsonSerializableWithName extends JsonSerializable
 class TypeBase extends JsonSerializableWithName
   package: null
   parse: (decl)->
-  as_json: (data...)-> super( data...)
+  as_json: (data...)-> super({_resolved: true}, data...)
 
 # A type class for yet unresolved types
 class ProxyType extends TypeBase
@@ -85,9 +85,9 @@ class Alias extends TypeBase
 class CType extends TypeBase
   constructor: (@name)->
   parse: (as)->
-    @raw = as.name.text
+    @c_name = as.c_name.name.text
 
-  as_json: -> super( _type: 'ctype', raw: @raw )
+  as_json: -> super( _type: 'ctype', c_name: @c_name )
 
 # A struct or class data field
 class Field extends JsonSerializableWithName

@@ -2,6 +2,7 @@ PEG = require 'pegjs'
 fs = require 'fs'
 _ = require 'underscore'
 
+say = require './say'
 
 class ParserHelper
   constructor: (@parser)->
@@ -52,7 +53,9 @@ compile_parser = (data, settings)->
 rebuild_parser = (grammar_path, callback)->
   fs.readFile grammar_path, encoding: 'UTF-8', (err, data)->
     throw err if err
-    callback( compile_parser(data) )
+    parser = compile_parser data
+    say.status_v 'grammar', grammar_path
+    callback parser
 
 # Internal helper function for parsing a file either sync or async
 parse_file_internal = (parser, filepath, err, data, callback)->

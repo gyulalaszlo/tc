@@ -12,6 +12,7 @@
     "pegjs": "~0.8.0",
     "coffee-script": "~1.7.1",
     "underscore": "~1.6.0",
-    "commander": "~2.1.0"
+    "commander": "~2.1.0",
+    "cli-color": "~0.2.3"
   }
 }
