@@ -14,5 +14,9 @@
     "underscore": "~1.6.0",
     "commander": "~2.1.0",
     "cli-color": "~0.2.3"
+  },
+  "repository": {
+    "type" : "git",
+    "url" : "http://github.com/gyulalaszlo/tc.git"
   }
 }

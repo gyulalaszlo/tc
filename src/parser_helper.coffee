@@ -78,12 +78,12 @@ parse_with_error_reports = (parser, filename, data)->
   catch err
     throw err unless err.name == "SyntaxError"
     report_error filename, err
-    null
+    process.exit(-1)
 
 
 # fancy error reporting function
 report_error = (filename, err)->
-  console.error "#{filename}(#{err.line}:#{err.column}): #{err.message}"
+  say.error "syntax_error", "#{filename}(#{err.line}:#{err.column}): #{err.message}"
 
 _.extend exports,
   # Create a parser with a helper

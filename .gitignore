@@ -3,6 +3,7 @@ node_modules
 
 examples/**/*.typetree
 examples/**/*.parsed
+examples/**/*.normalized_tree
 
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]

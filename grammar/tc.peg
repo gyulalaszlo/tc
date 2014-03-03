@@ -1,3 +1,20 @@
+{
+  merge_expr = function(name, left, right) {
+    var result = left;
+    for (var i = 0; i < right.length; i++) {
+      part = right[i];
+      // if we may have the op also
+      result = { _type: name,  a:result, b:part[part.length - 1 ] };
+      if (part.length > 1) {
+        result.op = part[0]
+      }
+      
+    }
+    return result;
+  }
+}
+
+
 start
   = package:PackageDecl contents:Contents !. ->{{ COMPILATION_UNIT with package, contents }}
 
@@ -24,13 +41,13 @@ PackageDecl "Package declaration"
 
 
 Contents "Compilation Unit contents"
-  = declarations:StatementList ->{{ CONTENTS with declarations }}
+  = declarations:RootStatementList ->{{ CONTENTS with declarations }}
 
 
-StatementList "Statement List"
-  = Statement*
+RootStatementList "Statement List"
+  = RootStatement*
 
-Statement "Statement"
+RootStatement "Root declaration statements"
   = TypeStatement
   / MethodList
 
@@ -138,8 +155,9 @@ FunctionArgumentMore
 
 
 FunctionBody
-  = "{" WS  "}" WS { return []; }
+  = "{" WS c:FunctionBodyContents  "}" WS { return c; }
 
+////////////////////////////////////////////////////////////////////////////////
 
 TypeList "A list of types"
   = first:Typename_ WS more:MoreTypes* { return { _type:"TYPELIST", list: [first].concat(more) }; }
@@ -149,3 +167,179 @@ MoreTypes = "," WS more:Typename_ WS
 
 Typename_ "Type name"
   = name:Identifier ->{{ TYPENAME with name }}
+
+////////////////////////////////////////////////////////////////////////////////
+
+FunctionBodyContents
+  = statements:FunctionBodyElement* ->{{ BODY with statements }}
+
+
+FunctionBodyElement
+  = s:Statement_ SE { return s }
+
+Statement_
+  = Expression_
+  //= s:ReturnStatement_ { return s; }
+  /// Expression_
+
+ReturnStatement_
+  = "return" WS expr:Expression_ ->{{ RETURN with expr }}
+
+Expression_
+  = head:AssignmentExpression
+    tail:(WS "," WS b:AssignmentExpression { return b; })*
+    { return merge_expr( "EXPR", head, tail ); }
+
+PrimaryExpression
+  = ThisToken       {  return { _type: "THIS" }; }
+  / name:Identifier ->{{ VARIABLE with name }}
+  /// Literal
+  /// ArrayLiteral
+  /// ObjectLiteral
+  / "(" WS expression:Expression_ WS ")" { return expression; }
+
+ThisToken = "this"
+////////////////////////////////////////////////////////////////////////////////
+
+InitializeExpression_ "Declare and initialize the variable"
+  = variable:Identifier WS ":=" WS expr:Expression_ ->{{ INIT with variable, expr }}
+
+VariableAccessExpression_ "Accessing a variable"
+  = variable:Identifier
+
+////////////////////////////////////////////////////////////////////////////////
+
+AssignmentExpression =
+  a:LeftHandSideExpression WS
+  op:AssignmentOperator WS
+  b:AssignmentExpression ->{{ E_ASSIGN with a, op, b }}
+
+  / e:EqualityExpression { return e; }
+
+EqualityExpression =
+  head:RelationalExpression
+  tail:(WS op:EqualityOperator WS c:RelationalExpression { return [op, c]; })*
+    { return merge_expr( "E_EQ", head, tail ); }
+
+RelationalExpression =
+  head:ShiftExpression
+  tail:(WS op:RelationalOperator WS b:ShiftExpression { return [op, b]; })*
+    { return merge_expr( "E_RELATIONAL", head, tail ); }
+
+
+ShiftExpression =
+  head:AdditiveExpression
+  tail:(WS op:ShiftOperator WS b:AdditiveExpression { return [op, b]; })*
+    { return merge_expr( "E_SHIFT", head, tail ); }
+
+AdditiveExpression =
+  head:MultiplicativeExpression
+  tail:(WS op:AdditiveOperator WS c:MultiplicativeExpression {return [op, c];})*
+    { return merge_expr( "E_ADD", head, tail ); }
+
+MultiplicativeExpression =
+  head:UnaryExpression
+  tail:(WS op:MultiplicativeOperator WS b:UnaryExpression { return [op, b];})*
+    { return merge_expr( "E_MUL", head, tail ); }
+
+UnaryExpression
+  = e:PostfixExpression { return e; }
+  / op:UnaryOperator a:UnaryExpression ->{{ E_UNARY with op, a }}
+
+PostfixExpression
+  = a:LeftHandSideExpression op:PostfixOperator ->{{ E_POSTFIX with op, a }}
+  / e:LeftHandSideExpression { return e; }
+
+LeftHandSideExpression
+  = c:CallExpression
+  / NewExpression
+
+//CallExpression =
+
+NewExpression
+  = MemberExpression
+  / "new" WS type:Identifier ->{{ NEW with type }}
+
+CallExpression
+  = base:(
+    name:MemberExpression WS args:Arguments
+  )
+  argumentsOrAccessors:(
+      WS args:Arguments
+    / WS "[" WS name:Expression_ WS "]"
+    / WS "." WS name:IdentifierName 
+  )*
+MemberExpression
+  = base:(
+    PrimaryExpression
+    /// FunctionExpression
+    / "new" WS constructor:MemberExpression WS args:Arguments 
+  )
+  accessors:(
+    WS "[" WS name:Expression_ WS "]" { return name; }
+    / WS "." WS name:IdentifierName    { return name; }
+  )*
+
+    //BitwiseANDExpression = a:EqualityExpression WS
+    //BitwiseANDOperator WS 
+Arguments
+  = "(" WS args:ArgumentList? WS ")" {
+    return args !== null ? args : [];
+  }
+
+ArgumentList
+  = head:AssignmentExpression tail:(WS "," WS AssignmentExpression)* 
+////////////////////////////////////////////////////////////////////////////////
+
+AssignmentOperator
+  = "=" (!"=") { return "="; }
+  / "*="
+  / "/="
+  / "%="
+  / "+="
+  / "-="
+  / "<<="
+  / ">>="
+  / ">>>="
+  / "&="
+  / "^="
+  / "|="
+  / ":="
+
+
+MultiplicativeOperator
+  = operator:("*" / "/" / "%") !"=" { return operator; }
+
+AdditiveOperator
+  = "+" !("+" / "=") { return "+"; }
+  / "-" !("-" / "=") { return "-"; }
+
+UnaryOperator
+  = "++"
+  / "--"
+  / "+"
+  / "-"
+  / "~"
+  /  "!"
+
+ShiftOperator
+  = "<<"
+  / ">>>"
+  / ">>"
+
+RelationalOperator
+  = "<="
+  / ">="
+  / "<"
+  / ">"
+
+PostfixOperator
+  = "++"
+  / "--"
+
+EqualityOperator
+  = "==="
+  / "!=="
+  / "=="
+  / "!="
+////////////////////////////////////////////////////////////////////////////////

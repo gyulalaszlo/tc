@@ -9,6 +9,8 @@ program
   .option( '-p, --save-parse-tree', 'Save the parsed tree', false )
   .option( '-t, --save-type-tree', 'Save the type tree', false )
 
+  .option( '-n, --save-normalized-form', 'Save the normalized form of types', false )
+
   .option('-v, --verbose', 'More status messages.')
   .parse(process.argv);
 

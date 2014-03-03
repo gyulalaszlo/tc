@@ -1,19 +1,25 @@
 package monkeybase
 
-type u32 = C uint32_t
-type Id = alias u32
-
 type IdGenerator = class {
   Id id;
 }
 
-type IdGeneratorWrapper = class {
+type idGeneratorWrapper = class {
   IdGenerator g
   IdGenerator f
   Id i
   u32 uses
 }
 
+type Range = struct {
+  u32 start
+  u32 end
+}
+
+// these declarations should be accessible before this line
+type Id = alias u32
+type Float = alias f32
+type Double = alias f64
 
 public IdGenerator = {
 
@@ -30,9 +36,13 @@ public IdGenerator = {
 
   // Get the id and advance the generator
   Next = fn() Id {
-////    return id++;
+    //out = id
+    out := id
+    id = id + increment
+    //return out
   }
 
+  Status = fn() Id {}
 
   // Reset the counter for the generator
   Reset = fn() {
