@@ -4,7 +4,7 @@ type IdGenerator = class {
   Id id;
 }
 
-type idGeneratorWrapper = class {
+type IdGeneratorWrapper = class {
   IdGenerator g
   IdGenerator f
   Id i
@@ -30,22 +30,23 @@ public IdGenerator = {
 
   // if the start is fixed
   Constructor = fn ( Id start ) {
+      id = start
+    outworld.destroy()
   }
 
-  Destructor = fn() {}
 
   // Get the id and advance the generator
   Next = fn() Id {
     //out = id
     out := id
-    id = id + increment
-    //return out
+    id += 1
+    return out
   }
 
-  Status = fn() Id {}
 
   // Reset the counter for the generator
   Reset = fn() {
+    id = 0
   }
 
 }

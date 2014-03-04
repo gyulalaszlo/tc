@@ -1,0 +1,170 @@
+
+////////////////////////////////////////////////////////////////////////////////
+Expression_
+  = head:AssignmentExpression
+    tail:(WS "," WS b:AssignmentExpression { return b; })*
+    { return merge_expr( "EXPR_LIST", head, tail ); }
+
+PrimaryExpression
+  = ThisToken       {  return { _type: "THIS" }; }
+  / name:Identifier ->{{ VARIABLE with name }}
+  / value:Literal ->{{ LITERAL with value }}
+  /// ArrayLiteral
+  /// ObjectLiteral
+  / "(" WS expression:Expression_ WS ")" { return expression; }
+
+ThisToken = "this"
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+AssignmentExpression =
+  a:LeftHandSideExpression WS
+  op:AssignmentOperator WS
+  b:AssignmentExpression ->{{ expr.ASSIGN with a, op, b }}
+
+  / e:EqualityExpression { return e; }
+
+EqualityExpression =
+  head:RelationalExpression
+  tail:(WS op:EqualityOperator WS c:RelationalExpression { return [op, c]; })*
+    { return merge_expr( "E_EQ", head, tail ); }
+
+RelationalExpression =
+  head:ShiftExpression
+  tail:(WS op:RelationalOperator WS b:ShiftExpression { return [op, b]; })*
+    { return merge_expr( "expr.RELATIONAL", head, tail ); }
+
+
+ShiftExpression =
+  head:AdditiveExpression
+  tail:(WS op:ShiftOperator WS b:AdditiveExpression { return [op, b]; })*
+    { return merge_expr( "expr.SHIFT", head, tail ); }
+
+AdditiveExpression =
+  head:MultiplicativeExpression
+  tail:(WS op:AdditiveOperator WS c:MultiplicativeExpression {return [op, c];})*
+    { return merge_expr( "expr.ADD", head, tail ); }
+
+MultiplicativeExpression =
+  head:UnaryExpression
+  tail:(WS op:MultiplicativeOperator WS b:UnaryExpression { return [op, b];})*
+    { return merge_expr( "expr.MUL", head, tail ); }
+
+UnaryExpression
+  = e:PostfixExpression { return e; }
+  / op:UnaryOperator a:UnaryExpression ->{{ expr.UNARY with op, a }}
+
+PostfixExpression
+  = a:LeftHandSideExpression op:PostfixOperator ->{{ expr.POSTFIX with op, a }}
+  / e:LeftHandSideExpression { return e; }
+
+LeftHandSideExpression
+  = CallExpression
+  / NewExpression
+
+////////////////////////////////////////////////////////////////////////////////
+//CallExpression =
+
+NewExpression
+  = MemberExpression
+  / "new" WS type:Identifier ->{{ expr.NEW with type }}
+
+CallExpression
+  = base:(
+    member:MemberExpression WS args:Arguments
+    ->{{ expr.CALL_MEMBER with member, args }}
+  )
+  argOrAcc:(
+      WS args:Arguments ->{{ expr.CALL_CALLABLE with args }}
+    / WS "[" WS name:Expression_ WS "]" ->{{ expr.ARRAY_ACCESS with name }}
+    / WS "." WS name:IdentifierName ->{{ expr.PROPERTY_ACCESS with name }}
+  )*
+  {
+      var result = base;
+      if (argOrAcc.length > 0) {
+        result = { _type: "expr.CALL", base: base, tail: argsOrAcc };
+      }
+      return result;
+  }
+
+MemberExpression
+  = base:(
+    PrimaryExpression
+    /// FunctionExpression
+    / "new" WS constructor:MemberExpression WS args:Arguments
+  )
+  accessors:(
+    WS "[" WS name:Expression_ WS "]"  ->{{ expr.ARRAY_ACCESS with name }}
+    / WS "." WS name:IdentifierName ->{{ expr.PROPERTY_ACCESS with name }}
+  )*
+  {
+    if (accessors.length > 0) {
+      return { _type: "expr.MEMBER", base: base, access_chain: accessors  };
+    }
+    return base;
+  }
+
+    //BitwiseANDExpression = a:EqualityExpression WS
+    //BitwiseANDOperator WS
+Arguments
+  = "(" WS args:ArgumentList? WS ")" {
+    return args !== null ? args : [];
+  }
+
+ArgumentList
+  = head:AssignmentExpression tail:(WS "," WS AssignmentExpression)*
+////////////////////////////////////////////////////////////////////////////////
+
+AssignmentOperator
+  = "=" (!"=") { return "="; }
+  / "*="
+  / "/="
+  / "%="
+  / "+="
+  / "-="
+  / "<<="
+  / ">>="
+  / ">>>="
+  / "&="
+  / "^="
+  / "|="
+
+
+
+MultiplicativeOperator
+  = operator:("*" / "/" / "%") !"=" { return operator; }
+
+AdditiveOperator
+  = "+" !("+" / "=") { return "+"; }
+  / "-" !("-" / "=") { return "-"; }
+
+UnaryOperator
+  = "++"
+  / "--"
+  / "+"
+  / "-"
+  / "~"
+  /  "!"
+
+ShiftOperator
+  = "<<"
+  / ">>>"
+  / ">>"
+
+RelationalOperator
+  = "<="
+  / ">="
+  / "<"
+  / ">"
+
+PostfixOperator
+  = "++"
+  / "--"
+
+EqualityOperator
+  = "==="
+  / "!=="
+  / "=="
+  / "!="
+

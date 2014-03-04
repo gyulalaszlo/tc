@@ -1,8 +1,8 @@
 _ = require 'underscore'
 fs = require 'fs'
 path = require 'path'
+winston = require 'winston'
 
-say = require './say'
 parser_helper = require './parser_helper'
 templates = require './templates'
 builder = require './builder'
@@ -42,82 +42,116 @@ class ScopeList
     null
 
 
-get_root_dir = (options)->
-  throw new Error("Package root directory not set.") unless options.root
-  path.normalize( options.root )
-
-get_package_path = (package_name, options)->
-  # find the root directory
-  root_dir = get_root_dir options
-  # find the package path
-  package_path = path.join root_dir, package_name
-  # check if the package path is a valid one
-  return package_path if fs.existsSync( package_path )
-  # an invalid package was given
-  throw new Error("The package #{package_name} cannot be found at #{package_path}.")
-
-# Run the callback for each .tc file in the package path that may be a valid TC file.
-each_package_file = (package_path, callback)->
-  files = fs.readdirSync package_path
-  for file in files
-    continue unless util.is_tc_file(file)
-    callback( path.join(package_path, file), file )
+class TcRoot
+  constructor: (@dir)->
+    throw new Error("Package root directory not set.") unless @dir
+    @packages = {}
+    @output_dir = path.join( @dir, ".tc" )
 
 
-# Write the parsed tree to the corresponding file
-save_normalized_lists = (tree, package_path, options)->
-  return unless options.saveNormalizedForm
-  file_path = path.join( package_path, ".normalized_tree" )
-  util.write_file file_path, JSON.stringify(tree, null, 2)
+  add: (package_location)->
+    @packages[package_location.name] = package_location
+    package_location.root = @
+  get: (name)-> @packages[name]
 
 
-# Write the parsed tree to the corresponding file
-save_parse_tree = (tree, file, package_path, options)->
-  file_path = path.join( package_path, ".#{ path.basename(file)}.parsed" )
-  util.write_file file_path, JSON.stringify(tree, null, 2)
+class TcPackageLocation
+  constructor: (@name)->
 
-# Write the parsed tree to the corresponding file
-save_type_tree = (tree, package_path, options)->
-  file_path = path.join( package_path, ".package.typetree" )
-  util.write_file file_path, JSON.stringify(tree, null, 2)
+
+  dir: -> @_dir ||= path.join( @root.dir, @name )
+  output_dir: -> @_output_dir ||= path.join( @root.output_dir, @name )
+
+  # Save something to the output directory
+  output_file: (filename, contents)->
+    file_path = path.join( @output_dir(), filename )
+    util.write_file file_path, contents
+
+  # Save something to the output dir as JSON
+  output_json: (filename, obj)->
+    @output_file( filename, JSON.stringify(obj, null, 2) )
+
+
+  # Run the callback for each .tc file in the 
+  # package path that may be a valid TC file.
+  each_tc_file: (callback)->
+    package_path = @dir()
+    # if the package dir is invalid, signal it
+    unless fs.existsSync(package_path)
+      throw new Error("The package #{@name} cannot be found at #{package_path}.")
+    # go through the files
+    files = fs.readdirSync package_path
+    for file in files
+      continue unless util.is_tc_file(file)
+      callback( path.join(package_path, file), file )
+
+
+
+#get_root_dir = (options)->
+  #throw new Error("Package root directory not set.") unless options.root
+  #path.normalize( options.root )
+
+#get_package_path = (package_name, options)->
+  ## find the root directory
+  #root_dir = get_root_dir options
+  ## find the package path
+  #package_path = path.join root_dir, package_name
+  ## check if the package path is a valid one
+  #return package_path if fs.existsSync( package_path )
+  ## an invalid package was given
+  #throw new Error("The package #{package_name} cannot be found at #{package_path}.")
+
+## Run the callback for each .tc file in the package path that may be a valid TC file.
+#each_package_file = (package_path, callback)->
+  #files = fs.readdirSync package_path
+  #for file in files
+    #continue unless util.is_tc_file(file)
+    #callback( path.join(package_path, file), file )
+
 
 
 # Compile a list of package. For options, see bin/tcc-parser
 compile_packages = (package_list, options)->
-  parse_packages package_list, options, (parsed_packages)->
+  root = new TcRoot( options.root )
+  parse_packages root, package_list, options, (parsed_packages)->
     package_name_list = _.pluck(parsed_packages, "name")
-    say.status "parsing_done", "#{parsed_packages.length} package(s): #{package_name_list.join(', ') }"
+    winston.debug "Parsed #{parsed_packages.length} package(s): #{package_name_list.join(', ') }"
 
     # resolve the types in this package
     for pack in parsed_packages
       resolved = resolve_types pack, options
-      package_path = get_package_path( pack.name, options )
-      save_normalized_lists( resolved, package_path, options)
+      package_dir = root.get( pack.name )
+      #package_path = get_package_path( pack.name, options )
+      package_dir.output_json( "_.normalized", resolved ) if options.saveNormalizedForm
+      #save_normalized_lists( resolved, package_path, options)
 
-      builder.build_package_files resolved, package_path, options
+      builder.build_package_files( resolved, package_dir, options )
 
 
 
 # The first step in the compilation is parsing the package sources
-parse_packages = (package_list, options, callback)->
-  say.set_options options
-  # find the root directory
-  root_dir = get_root_dir options
+parse_packages = (root, package_list, options, callback)->
   # load the parser
   parser_helper.with_parser "#{__dirname}/../grammar/tc.peg", (parser)->
     parsed_packages = []
     # go through each given package
     for package_name in package_list
-      say.status_v "package", package_name
+      # create the package location handler
+      package_dir = new TcPackageLocation( package_name )
+      root.add package_dir
+      #
+      winston.debug "starting to parse package '#{package_name}'"
       # get the package path
-      package_path = get_package_path( package_name, options )
+      #package_path = get_package_path( package_name, options )
       package_files = []
-      each_package_file package_path, (f, filename)->
+      package_dir.each_tc_file (f, filename)->
         # try to parse the file
         parser.parse_file_sync f, (res)->
-          save_parse_tree( res, f, package_path, options ) if options.saveParseTree
+          package_dir.output_json( "#{path.basename(f)}.parsed", res ) if options.saveParseTree
+          #save_parse_tree( res, f, package_path, options ) if options.saveParseTree
           package_files.push res
-          say.status_v "source", "#{filename} (#{f})"
+          winston.debug "parsed source: #{filename} -> '#{f}'"
+          #say.status_v "source", "#{filename} (#{f})"
 
       # Make a package from the units
       pack = tc_packages.from_units package_files
@@ -125,8 +159,9 @@ parse_packages = (package_list, options, callback)->
       # store it
       parsed_packages.push pack_data
       # and display some misc info
-      say.status_v "package_parsed", package_name
-      save_type_tree(pack.as_json(), package_path, options) if options.saveTypeTree
+      winston.debug "package '#{package_name}' parsed."
+      #save_type_tree(pack.as_json(), package_path, options) if options.saveTypeTree
+      package_dir.output_json( "_.typetree", pack_data ) if options.saveTypeTree
 
     # callback with the list of parsed packages
     callback(parsed_packages)
@@ -134,7 +169,7 @@ parse_packages = (package_list, options, callback)->
 
 # resolve any types in the package
 resolve_types = (pack, options)->
-  say.status_v "resolving types", pack.name
+  winston.debug "starting to resolve types of '#{pack.name}'"
   typelist = []
   method_lists = []
   scoped = new ScopeList
@@ -221,30 +256,6 @@ class MethodlistResolver
 
   resolve: (name)->
     resolve_type( name, @scoped, @typelist )
-
-build_class_files = (filename, units)->
-  meta = {}
-  each_matching_declaration units, "typedecl", (decl)->
-    if decl.as.has_tag 'class'
-      key = decl.name.text
-      meta[key] = { type: decl }
-
-  each_matching_declaration units, "method_set", (decl)->
-    key = decl.name.toString()
-    meta[key].methods ||= []
-    meta[key].methods.push decl
-
-  for k, v of meta
-    class_tpl = require './templates/class'
-    res = templates.run_c_tpl class_tpl, meta[k]
-    #console.log res.toString()
-    console.log res._tokens.toString()
-
-each_matching_declaration = (units, tag, callback)->
-  for unit in units
-    for decl in unit.contents.declarations
-      if decl.has_tag tag
-        callback(decl)
 
 module.exports =
   compile_packages: compile_packages

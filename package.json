@@ -13,10 +13,13 @@
     "coffee-script": "~1.7.1",
     "underscore": "~1.6.0",
     "commander": "~2.1.0",
-    "cli-color": "~0.2.3"
+    "cli-color": "~0.2.3",
+    "fs-extra": "~0.8.1",
+    "underscore.string": "~2.3.3",
+    "winston": "~0.7.2"
   },
   "repository": {
-    "type" : "git",
-    "url" : "http://github.com/gyulalaszlo/tc.git"
+    "type": "git",
+    "url": "http://github.com/gyulalaszlo/tc.git"
   }
 }

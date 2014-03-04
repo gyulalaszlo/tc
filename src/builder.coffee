@@ -1,25 +1,27 @@
 _ = require 'underscore'
+_s = require 'underscore.string'
 templates = require './templates'
 
 types_tpl = require './templates/types'
 class_tpl = require './templates/class'
 
-build_package_files = (pack, path, options)->
-  console.log build_types_file(pack, options).toString()
-  build_class_files(pack, options)
+build_package_files = (pack, pack_dir, options)->
+  build_types_file(pack, pack_dir, options)
+  build_class_files(pack, pack_dir, options)
 
-build_types_file = (pack, options)->
+
+build_types_file = (pack, pack_dir, options)->
   res = templates.run_c_tpl types_tpl, pack
-  res._tokens
+  pack_dir.output_file "#{_s.underscored pack.name}_types.h", res._tokens.toString()
+  #res._tokens
 
 
 index_in_typelist = (typelist, name)->
   for k, i in typelist
     return i if k.name == name
-
   throw new Error("Cannot find type in typelist")
 
-build_class_files = (pack, options)->
+build_class_files = (pack, pack_dir, options)->
   for klass in _.where( pack.typelist, _type: 'class', public: true)
     # find the index in the typelist
     typelist_idx = index_in_typelist( pack.typelist, klass.name )
@@ -28,7 +30,10 @@ build_class_files = (pack, options)->
     # and run the template
     obj = {class: klass, package: pack, idx: typelist_idx, method_lists: method_lists}
     res = templates.run_c_tpl( class_tpl, obj)
-    console.log res._tokens.toString()
+
+    output_file_name = "#{_s.underscored klass.name}.h"
+    pack_dir.output_file output_file_name, res._tokens.toString()
+    #console.log res._tokens.toString()
 
 module.exports =
   build_package_files: build_package_files

@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 
+var winston = require('winston');
 var program = require('commander');
 var coffee = require('coffee-script/register');
 var compiler = require('../src/compiler');
+
+//
+// Configure CLI output on the default logger
+//
+winston.cli();
+
 
 program
   .option( '-r, --root [dir]', 'The root of the package tree', 'examples' )
