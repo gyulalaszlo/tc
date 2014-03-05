@@ -1,10 +1,10 @@
 {
-  merge_expr = function(name, left, right) {
+  merge_expr = function(group, name, left, right) {
     var result = left;
     for (var i = 0; i < right.length; i++) {
       part = right[i];
       // if we may have the op also
-      result = { _type: name,  a:result, b:part[part.length - 1 ] };
+      result = { _type: name, _group: group,  a:result, b:part[part.length - 1 ] };
       if (part.length > 1) {
         result.op = part[0]
       }
@@ -15,7 +15,7 @@
 
 
 start
-  = package:PackageDecl contents:Contents !. ->{{ COMPILATION_UNIT with package, contents }}
+  = package:PackageDecl contents:Contents ->{{ COMPILATION_UNIT with package, contents }}
 
 NL_CHARS = [\n\r]
 
@@ -182,13 +182,13 @@ Statement_
   //= Expression_
   = s:ReturnStatement_
   / CreateAndAssignStatement_
-  / Expression_
+  / expr:Expression_ ->{{ statement.EXPR with expr }}
 
 ReturnStatement_
-  = "return" WS expr:Expression_ ->{{ RETURN with expr }}
+  = "return" WS expr:Expression_ ->{{ statement.RETURN with expr }}
 
 CreateAndAssignStatement_
-  = name:Identifier WS ":=" WS expr:Expression_ ->{{ CASSIGN with name, expr }}
+  = name:Identifier WS ":=" WS expr:Expression_ ->{{ statement.CASSIGN with name, expr }}
 
 ////////////////////////////////////////////////////////////////////////////////
 

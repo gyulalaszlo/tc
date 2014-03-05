@@ -2,6 +2,7 @@ package monkeybase
 
 type IdGenerator = class {
   Id id;
+  Id increment;
 }
 
 type IdGeneratorWrapper = class {
@@ -26,12 +27,18 @@ public IdGenerator = {
 
   //// empty constructor to start from zero
   Constructor = fn() {
+      @increment = 1
+      this.increment = 1
+      @should.get.dust().versus.Riki()
+      this.one.should.get.dust().versus.Riki( @increment + 1)
   }
 
   // if the start is fixed
-  Constructor = fn ( Id start ) {
-      id = start
-    outworld.destroy()
+  Constructor = fn ( Id start, Id increment ) {
+      @id = start
+      @increment = increment
+      //@local_outworld()
+      //outworld() + outworld.destroy()
   }
 
 

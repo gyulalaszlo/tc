@@ -87,29 +87,6 @@ class TcPackageLocation
 
 
 
-#get_root_dir = (options)->
-  #throw new Error("Package root directory not set.") unless options.root
-  #path.normalize( options.root )
-
-#get_package_path = (package_name, options)->
-  ## find the root directory
-  #root_dir = get_root_dir options
-  ## find the package path
-  #package_path = path.join root_dir, package_name
-  ## check if the package path is a valid one
-  #return package_path if fs.existsSync( package_path )
-  ## an invalid package was given
-  #throw new Error("The package #{package_name} cannot be found at #{package_path}.")
-
-## Run the callback for each .tc file in the package path that may be a valid TC file.
-#each_package_file = (package_path, callback)->
-  #files = fs.readdirSync package_path
-  #for file in files
-    #continue unless util.is_tc_file(file)
-    #callback( path.join(package_path, file), file )
-
-
-
 # Compile a list of package. For options, see bin/tcc-parser
 compile_packages = (package_list, options)->
   root = new TcRoot( options.root )
@@ -192,15 +169,18 @@ resolve_typelist = (pack, typelist, scoped)->
   # since the proxies go by name, we can replace by name
   for name, t of pack.types
     scoped.with_level name, ->
-      switch 
+      switch
         # C types are already ok, no need to resolve
         when t._type == "ctype"
           replace_in_typelist typelist, name, { _type: "ctype", name: name, raw: t.c_name }
+
+        # An alias should point to a resolved orignal
         when t._type == "alias"
           original_type_name = t.original
           resolved = resolve_type(t.original.name, scoped, typelist)
           replace_in_typelist typelist, name, { _type: "alias", name: name, original: resolved }
 
+        # Classes and structs need their fields resolved
         when t._type in ['class', 'struct']
           fields = []
           for field in t.fields

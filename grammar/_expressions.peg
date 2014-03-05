@@ -3,19 +3,22 @@
 Expression_
   = head:AssignmentExpression
     tail:(WS "," WS b:AssignmentExpression { return b; })*
-    { return merge_expr( "EXPR_LIST", head, tail ); }
+    { return merge_expr( "expr", "EXPR_LIST", head, tail ); }
 
 PrimaryExpression
-  = ThisToken       {  return { _type: "THIS" }; }
-  / name:Identifier ->{{ VARIABLE with name }}
-  / value:Literal ->{{ LITERAL with value }}
+  = ThisToken       {  return { _type: "THIS", _group: 'expr' }; }
+  / name:Identifier ->{{ expr.VARIABLE with name }}
+  / ThisAccess
+  / value:Literal ->{{ expr.LITERAL with value }}
   /// ArrayLiteral
   /// ObjectLiteral
   / "(" WS expression:Expression_ WS ")" { return expression; }
 
 ThisToken = "this"
 
-
+ThisAccess
+  = '@' name:Identifier ->{{ expr.THIS_ACCESS with name }}
+  //
 ////////////////////////////////////////////////////////////////////////////////
 
 AssignmentExpression =
@@ -28,28 +31,28 @@ AssignmentExpression =
 EqualityExpression =
   head:RelationalExpression
   tail:(WS op:EqualityOperator WS c:RelationalExpression { return [op, c]; })*
-    { return merge_expr( "E_EQ", head, tail ); }
+    { return merge_expr( "expr", "EQ",  head, tail ); }
 
 RelationalExpression =
   head:ShiftExpression
   tail:(WS op:RelationalOperator WS b:ShiftExpression { return [op, b]; })*
-    { return merge_expr( "expr.RELATIONAL", head, tail ); }
+    { return merge_expr( "expr", "RELATIONAL", head, tail ); }
 
 
 ShiftExpression =
   head:AdditiveExpression
   tail:(WS op:ShiftOperator WS b:AdditiveExpression { return [op, b]; })*
-    { return merge_expr( "expr.SHIFT", head, tail ); }
+    { return merge_expr( "expr", "SHIFT", head, tail ); }
 
 AdditiveExpression =
   head:MultiplicativeExpression
   tail:(WS op:AdditiveOperator WS c:MultiplicativeExpression {return [op, c];})*
-    { return merge_expr( "expr.ADD", head, tail ); }
+    { return merge_expr( "expr", "ADD", head, tail ); }
 
 MultiplicativeExpression =
   head:UnaryExpression
   tail:(WS op:MultiplicativeOperator WS b:UnaryExpression { return [op, b];})*
-    { return merge_expr( "expr.MUL", head, tail ); }
+    { return merge_expr( "expr", "MUL", head, tail ); }
 
 UnaryExpression
   = e:PostfixExpression { return e; }
@@ -83,7 +86,8 @@ CallExpression
   {
       var result = base;
       if (argOrAcc.length > 0) {
-        result = { _type: "expr.CALL", base: base, tail: argsOrAcc };
+        result.tail = argOrAcc
+        //result = { _type: "CALL", _group: "expr", base: base, tail: argOrAcc };
       }
       return result;
   }
@@ -100,7 +104,7 @@ MemberExpression
   )*
   {
     if (accessors.length > 0) {
-      return { _type: "expr.MEMBER", base: base, access_chain: accessors  };
+      return { _type: "MEMBER",  _group: 'expr', base: base, access_chain: accessors  };
     }
     return base;
   }
@@ -114,6 +118,9 @@ Arguments
 
 ArgumentList
   = head:AssignmentExpression tail:(WS "," WS AssignmentExpression)*
+  {
+    return [head].concat(tail);
+  }
 ////////////////////////////////////////////////////////////////////////////////
 
 AssignmentOperator
