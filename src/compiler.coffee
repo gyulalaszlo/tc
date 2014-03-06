@@ -11,6 +11,7 @@ builder = require './builder'
 tc_packages = require './metadata'
 util = require './util'
 
+MethodListResolver = require './resolver/method_list_resolver'
 
 class ScopeList
   constructor: ->
@@ -177,7 +178,7 @@ resolve_types = (pack, options)->
   scoped = new ScopeList
   scoped.with_level pack.name, ->
     resolve_typelist(pack, typelist, scoped)
-    mlr = new MethodlistResolver( pack, normalized_package, scoped)
+    mlr = new MethodListResolver( pack, normalized_package, scoped)
     method_lists = mlr.method_lists
 
   normalized_package
@@ -239,198 +240,6 @@ resolve_type = (typename, current_scope, typelist)->
 
 
 
-class MethodlistResolver
-  constructor: (@pack, @normalized_package, @scoped)->
-    # cache some things for legacy code
-    @typelist = @normalized_package.typelist
-    @method_lists = @normalized_package.method_lists
-    @expressions = @normalized_package.expressions
-    # create something to store the expressions that get generated
-    @expressions = new ExpressionTreeList @typelist, @method_lists, @expressions
-
-    for method_list in pack.method_lists
-      target_name = method_list.type.name
-      access = method_list.access
-      target = @resolve_type target_name
-
-      methods = []
-      for method in method_list.methods
-        methods.push @single_definition(method, target)
-
-      @method_lists.push { _type: "method_list", target: target, methods: methods, access: access }
-
-
-  single_definition: (method, target)->
-    resolver = new SingleDefinitionResolver( @normalized_package, target )
-    resolver.resolve( method )
-
-  resolve_type: (name)->
-    resolve_type( name, @scoped, @typelist )
-
-
-class SingleDefinitionResolver
-  # the package and the target (receiver) of this method
-  constructor: (@pkg, @target)->
-    # cache some things for legacy code
-    @typelist = @pkg.typelist
-    @method_lists = @pkg.method_lists
-    @expressions = @pkg.expressions
-
-    # the expression tree resolver
-    @expression_resolver = new ExpressionTreeResolver(@typelist, @method_list, @target)
-
-    @resolvers =
-      cassign: new CAssignStatementResolver
-    resolver.parent = @ for k,resolver of @resolvers
-
-  resolve: (method)->
-    args = ({ name: a.name, type: @resolve_type(a.type.name) } for a in method.args)
-    returns = ({ type: @resolve_type(r.name) } for r in method.returns)
-    method_def = { name: method.name, args: args, returns: returns }
-    method_def.body = @resolve_body method_def, method.body
-    method_def
-
-  resolve_body: (method_def, statement_list)->
-    for s in statement_list
-      switch s._type
-        #when "cassign" then new CAssignStatementResolver().resolve( s )
-        when "return" then { _type: "return", expr: @expression_resolver.resolve_tree(s.tree) }
-        when "expression" then { _type: "expression", expr: @expression_resolver.resolve_tree(s.tree) }
-
-        else
-          resolver = @resolvers[s._type]
-          resolver.target = @target
-          resolver.resolve( s )
-
-  resolve_type: (name)->
-    resolve_type( name, @scoped, @typelist )
-
-
-# Create and Assign statements need their type deduced
-class CAssignStatementResolver
-  resolve: (t)->
-    # get the initializer expression
-    initializer_expression = @parent.expression_resolver.resolve_tree(t.tree) 
-    throw new Error("Cannot resolve right hand side of Create and Assign statement. - #{JSON.stringify(t)}") unless initializer_expression
-    console.log initializer_expression
-    # this tells us our type
-    type = initializer_expression.type
-    throw new Error("Cannot resolve type for left hand side of Create and Assign statement. - #{JSON.stringify(initializer_expression)}") unless type
-    { _type: "cassign", name: t.name, expr: initializer_expression, type: type  }
-
-# Helper object to construct and resolve expression trees and put them in a linear
-# array for easy referencing
-class ExpressionTreeList
-  constructor: (@typelist, @method_lists, @expressions)->
-
-  add: (resolved_type)->
-    idx = @expressions.length
-    resolved_type = @resolver.resolve_tree tree
-    @expressions.push resolved_type
-    #idx
-    resolved_type
-
-
-class ExpressionTreeResolver
-  constructor: (@typelist, @method_list, @target)->
-    @resolvers =
-      this: new ThisResolver
-      binary_expression: new BinaryExpressionResolver
-      literal_expression: new LiteralExpressionResolver
-      variable_expression: new VariableExpressionResolver
-      member_expression: new MemberExpressionResolver
-      call_member: new MemberCallExpressionResolver
-    # assign the parents for usage
-    resolver.parent = @ for k,resolver of @resolvers
-
-  resolve_tree: (t)->
-    resolver = @resolvers[t._type]
-    throw new Error("Unknown expression type: #{ t._type }") unless resolver
-    resolver.resolve(t)
-
-class BinaryExpressionResolver
-  resolve: (t)->
-    # resolve both operands
-    a = @parent.resolve_tree(t.a)
-    b = @parent.resolve_tree(t.b)
-    # check the op
-    op = t.op
-    switch
-      when op in ["=", "+=", "-="]
-        return { _type: "assignment_expr", op: op, a: a, b: b }
-      when op in ["+", "-", "/", "*"]
-        return { _type: "binary_expr", op: op, a: a, b: b }
-      else
-        throw new Error("Unknown BINARY operator: #{ op }")
-
-node_factories =
-  # common helper for ThisResolver and ThisAccessResolver
-  this: ( type_id )-> { _type: "this", type: type_id }
-
-  # common helper for outputting a member access node
-  member_access: (base, access_chain, type_id )->
-    { _type: "member", base: base, access_chain: access_chain, type: type_id  }
-
-  property_access: (name)-> { _type: "property", name: name  }
-
-class ThisResolver
-  resolve: (t)->
-    node_factories.this( @parent.target )
-
-
-class LiteralExpressionResolver
-  resolve: (t)->
-    #if t.
-    return { _type: "literal", value: t.value, type: t.type  }
-
-class MemberExpressionResolver
-  resolve: (t)->
-    base = @parent.resolve_tree(t.base)
-    access_chain = []
-    # When we start with a "this" access, add the @access to
-    # the access chain.
-    if base._type == "member"
-      # use the original base
-      base = base.base
-      # and copy over the old access chain
-      access_chain.concat base.access_chain
-
-    current_type_id = base.type
-    current_type = @parent.typelist[current_type_id]
-
-    for chain_el in t.access_chain
-      switch chain_el._type
-        when "property_access"
-          prop_name = chain_el.name
-          result = node_factories.property_access( chain_el.name )
-          # check if the type has any such properties
-          field = _.findWhere( current_type.fields, name: prop_name )
-          switch
-            when field
-              result.type = current_type_id = field.type
-            else
-              throw new Error("Method lookup not implemented")
-              method_lists = _.where( @parent.method_lists, target: current_type_id )
-              matching_methods
-              method = _findWhere( current_type.fields, name: prop_name )
-
-          current_type = @parent.typelist[current_type_id]
-          access_chain.push( result )
-
-
-    node_factories.member_access( base, access_chain, current_type_id )
-
-
-
-
-
-class VariableExpressionResolver
-  resolve: (t)->
-    return { _type: "variable", name: t.name  }
-
-class MemberCallExpressionResolver
-  resolve: (t)->
-    return { _type: "member_call", member: t.member ,args: t.args, tail: t.tail  }
 
 
 module.exports =

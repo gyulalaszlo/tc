@@ -46,7 +46,7 @@ public IdGenerator = {
       @id = start
       @increment = increment
       //@local_outworld()
-      outworld() + outworld.destroy()
+      //outworld() + outworld.destroy()
   }
 
 
