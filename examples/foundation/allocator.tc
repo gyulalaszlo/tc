@@ -1,0 +1,15 @@
+package foundation
+
+type AllocatorStats = class {
+  U64 Allocated
+  U64 Deallocated
+}
+
+
+public AllocatorStats = {
+
+  Active = fn() U64 {
+    return @Allocated - @Deallocated
+  }
+}
+

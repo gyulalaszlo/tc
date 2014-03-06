@@ -1,0 +1,4 @@
+package foundation
+
+type U32 = C uint32_t
+type U64 = C uint64_t

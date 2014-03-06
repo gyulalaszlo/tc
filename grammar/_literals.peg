@@ -4,18 +4,8 @@
 Literal
   = NullLiteral
   / BooleanLiteral
-  / value:NumericLiteral {
-      return {
-        type:  "NumericLiteral",
-        value: value
-      };
-    }
-  / value:StringLiteral {
-      return {
-        type:  "StringLiteral",
-        value: value
-      };
-    }
+  / value:NumericLiteral ->{{ literal.NUMERIC with value}} 
+  / value:StringLiteral ->{{ literal.STRING with value }}
   /// RegularExpressionLiteral
 
 

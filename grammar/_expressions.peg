@@ -87,7 +87,6 @@ CallExpression
       var result = base;
       if (argOrAcc.length > 0) {
         result.tail = argOrAcc
-        //result = { _type: "CALL", _group: "expr", base: base, tail: argOrAcc };
       }
       return result;
   }

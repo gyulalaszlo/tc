@@ -24,13 +24,21 @@ type Double = alias f64
 
 public IdGenerator = {
 
+  // Get the id and advance the generator
+  Next = fn() Id {
+    //out = id
+    out := @id
+    @id += 1
+    return out
+  }
+
 
   //// empty constructor to start from zero
   Constructor = fn() {
       @increment = 1
       this.increment = 1
-      @should.get.dust().versus.Riki()
-      this.one.should.get.dust().versus.Riki( @increment + 1)
+      //@should.get.dust().versus.Riki()
+      //this.one.should.get.dust().versus.Riki( @increment + 1)
   }
 
   // if the start is fixed
@@ -38,22 +46,14 @@ public IdGenerator = {
       @id = start
       @increment = increment
       //@local_outworld()
-      //outworld() + outworld.destroy()
+      outworld() + outworld.destroy()
   }
 
-
-  // Get the id and advance the generator
-  Next = fn() Id {
-    //out = id
-    out := id
-    id += 1
-    return out
-  }
 
 
   // Reset the counter for the generator
   Reset = fn() {
-    id = 0
+    @id = 0
   }
 
 }
