@@ -5,7 +5,7 @@ type IdGenerator = class {
   Id increment;
 }
 
-type IdGeneratorWrapper = class {
+type idGeneratorWrapper = class {
   IdGenerator g
   IdGenerator f
   Id i

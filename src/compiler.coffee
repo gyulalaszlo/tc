@@ -11,6 +11,8 @@ builder = require './builder'
 tc_packages = require './metadata'
 util = require './util'
 
+packaging = require './packaging'
+
 MethodListResolver = require './resolver/method_list_resolver'
 
 class ScopeList
@@ -44,64 +46,10 @@ class ScopeList
     null
 
 
-class TcRoot
-  constructor: (@dir)->
-    throw new Error("Package root directory not set.") unless @dir
-    @packages = {}
-    @output_dir = path.join( @dir, ".tc" )
-
-
-  add: (package_location)->
-    @packages[package_location.name] = package_location
-    package_location.root = @
-  get: (name)-> @packages[name]
-
-
-class TcPackageLocation
-  constructor: (@name)->
-
-
-  dir: -> @_dir ||= path.join( @root.dir, @name )
-  output_dir: -> @_output_dir ||= path.join( @root.output_dir, @name )
-
-  # Save something to the output directory
-  output_file: (filename, contents)->
-    file_path = path.join( @output_dir(), filename )
-    util.write_file file_path, contents
-
-  # Save something to the output dir as JSON
-  output_json: (filename, obj)->
-    @output_file( filename, JSON.stringify(obj, null, 2) )
-
-  # Does the package directory exist?
-  must_exist: (callback)->
-    package_path = @dir()
-    fs.exists package_path, (err, res)->
-      callback(err, res)
-
-
-  with_tc_files: (opts, callback)->
-    callback = callback ? opts
-    _.defaults opts, package_files: true, test_files: false
-    package_path = @dir()
-    package_dir = @
-    @must_exist (exists)->
-      return callback([]) unless exists
-      # now the directory exists
-      fs.readdir package_path, (err, files)->
-        # the current map function to filter the file list
-        filename_eraser = (fn)-> if util.is_tc_file(fn) then { path: path.join(package_path, fn), file: fn, dir: package_dir } else null
-        # map to all file names
-        all_files = _.chain( files ).map( filename_eraser ).without( null ).value()
-        callback(all_files)
-
-
-
-
-
 # Compile a list of package. For options, see bin/tcc-parser
 compile_packages = (package_list, options)->
-  root = new TcRoot( options.root )
+  root = new packaging.Root( options.root )
+  winston.info "Inside '#{path.normalize(root.dir)}'"
   parse_packages root, package_list, options, (parsed_packages)->
     package_name_list = _.pluck(parsed_packages, "name")
     winston.debug "Parsed #{parsed_packages.length} package(s): #{package_name_list.join(', ') }"
@@ -131,8 +79,8 @@ parse_packages = (root, package_list, options, callback)->
 # Parse a single package
 parse_package = (parser, root, options, package_name, callback)->
   # create the package location handler
-  package_dir = new TcPackageLocation( package_name )
-  root.add package_dir
+  #package_dir = new packaging.PackageDir( package_name )
+  package_dir = root.getOrCreate package_name
   #
   winston.info "Starting to parse package '#{package_name}'"
   # get the package path
@@ -140,6 +88,7 @@ parse_package = (parser, root, options, package_name, callback)->
   package_dir.with_tc_files (file_list)->
     parse_package_file_partial = _.partial( parse_package_file, parser, options )
     async.map file_list, parse_package_file_partial, (err, package_files)->
+      throw err if err
       # Make a package from the units
       pack = tc_packages.from_units package_files
       pack_data = pack.as_json()
@@ -211,10 +160,6 @@ resolve_typelist = (pack, typelist, scoped)->
           for field in t.fields
             fields.push { name: field.name, type: resolve_type( field.type.name, scoped, typelist ) }
           replace_in_typelist typelist, name, { _type: t._type, name: name, fields: fields }
-
-class TypelistHandler
-  constructor: ->
-    @typelist = []
 
 
 # replace a proxy type in the typelist

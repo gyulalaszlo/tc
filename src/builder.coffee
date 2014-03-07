@@ -5,14 +5,22 @@ templates = require './templates'
 types_tpl = require './templates/types'
 class_tpl = require './templates/class'
 
+package_impl = require './templates/package_impl'
+
 build_package_files = (pack, pack_dir, options)->
   build_types_file(pack, pack_dir, options)
   build_class_files(pack, pack_dir, options)
+  build_impl_file(pack, pack_dir, options)
 
 
 build_types_file = (pack, pack_dir, options)->
   res = templates.run_c_tpl types_tpl, pack
   pack_dir.output_file "#{_s.underscored pack.name}_types.h", res._tokens.toString()
+  #res._tokens
+
+build_impl_file = (pack, pack_dir, options)->
+  res = templates.run_c_tpl package_impl, pack
+  pack_dir.output_file "#{_s.underscored pack.name}.cc", res._tokens.toString()
   #res._tokens
 
 
