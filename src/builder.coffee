@@ -7,6 +7,10 @@ class_tpl = require './templates/class'
 
 package_impl = require './templates/package_impl'
 
+wrap_tpl = require './wrap_tpl'
+
+util = require './util'
+
 build_package_files = (pack, pack_dir, options)->
   build_types_file(pack, pack_dir, options)
   build_class_files(pack, pack_dir, options)
@@ -21,7 +25,13 @@ build_types_file = (pack, pack_dir, options)->
 build_impl_file = (pack, pack_dir, options)->
   res = templates.run_c_tpl package_impl, pack
   pack_dir.output_file "#{_s.underscored pack.name}.cc", res._tokens.toString()
-  #res._tokens
+
+  wrap_tpl.load "package_impl", (tpl)->
+    tpl_res =  tpl( pack: pack, type_name: util.type_name  )
+    render_res = wrap_tpl.render( tpl_res )
+    console.log JSON.stringify( tpl_res , null, 2  )
+    console.log JSON.stringify( render_res , null, 2  )
+  #ares._tokens
 
 
 index_in_typelist = (typelist, name)->

@@ -96,7 +96,6 @@ build_method_signature = (pack, method, target=null)->
   name = [ type_name( target )].concat(name) if target
   # make the arg and return lists
   args =  _.flatten( util.array_join( _.map( method.args, arg_list_builder ), ',' ) )
-  console.log args
   ret = _.map( method.returns, ret_type_builder )
   [ ret, name.join('::'), '(', args..., ')'  ]
 
@@ -137,7 +136,6 @@ module.exports = (c, pack)->
 
           o = []
           statements.list( method.body, o )
-          console.log o
           c.tokens o...
           #for statement in method.body
             #c.tokens JSON.stringify(statement)
