@@ -1,12 +1,32 @@
 package monkeybase
 
-type f32 = C float
-type f64 = C double
-type u32 = C uint32_t
-type i32 = C int32_t
+type F32 = C float
+type F64 = C double
+
+type U64 = C uint64_t
+type I64 = C int64_t
+
+type U32 = C uint32_t
+type I32 = C int32_t
 
 type Range = struct {
-  u32 start
-  u32 end
+  U32 start
+  U32 end
 }
 
+
+"""
+  A generic structure for callbacks, containing
+  a function ptr and 24 bytes of data
+"""
+type Callback32 = struct {
+  """
+    An Id or a uintptr_t for the callback ptr
+  """
+  U64 Id
+
+  """
+    6 * 4 bytes of data for the callback
+  """
+  U32[6] data
+}

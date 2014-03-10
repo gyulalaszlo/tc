@@ -51,10 +51,21 @@ class TypeBase extends JsonSerializableWithName
 
 # A type class for yet unresolved types
 class ProxyType extends TypeBase
-  constructor: (@name)->
+  constructor: (@name, decl)->
     @package = null
     @resolved = false
-  as_json: -> super( _resolved: false )
+
+    if decl and decl.extensions
+      # add all the extensions
+      @extensions = for ext in decl.extensions
+        switch ext._type
+          when "POINTER" then { _type: "pointer" }
+          when "REFERENCE" then { _type: "reference" }
+          when "ARRAY" then { _type: "array", size: parseInt(ext.size) }
+          else
+            throw new Error("Unknown type extension: #{ext._type} - decl: #{decl}")
+
+  as_json: -> super( _resolved: false, extensions: @extensions )
 
 
 # Common base class for Class and Struct
@@ -88,7 +99,7 @@ class Alias extends TypeBase
   constructor: (@name)->
   parse: (as)->
     super(as)
-    @original = new ProxyType( as.original.name.text )
+    @original = new ProxyType( as.original.name.text, as )
 
   as_json: -> super( _type: 'alias', original: @original )
 
@@ -105,7 +116,7 @@ class CType extends TypeBase
 class Field extends JsonSerializableWithName
   constructor: (data)->
     @name = data.name.text
-    @type = new ProxyType( data.type.name.text )
+    @type = new ProxyType( data.type.name.text, data.type )
 
   as_json: -> super( type: @type )
 
@@ -134,7 +145,7 @@ class Method extends JsonSerializableWithName
 
     # add the return types
     for ret in decl.func.returns.list
-      m_arg = new ProxyType( ret.name.text )
+      m_arg = new ProxyType( ret.name.text, ret )
       #m_arg.parse( arg.decl )
       @returns.push m_arg
 

@@ -106,7 +106,17 @@ AliasDefinition_ "Alias"
   = "alias" WS original:TypeName_ ->{{ ALIAS with original }}
 
 TypeName_ "Type Name"
-  = name:Identifier  ->{{ TYPE with name }}
+  = name:Identifier
+      extensions:( WS tap:TypeExtension { return tap;} )*
+      ->{{ TYPE with name, extensions }}
+
+
+TypeExtension "Array declaration part of types"
+  =  "[" WS size:$DecimalIntegerLiteral WS "]" ->{{ type.ARRAY with size }}
+  /  op:"*" ->{{ type.POINTER with op }}
+  /  op:"&" ->{{ type.REFERENCE with op }}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 

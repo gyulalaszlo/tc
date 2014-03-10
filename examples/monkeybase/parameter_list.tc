@@ -1,0 +1,8 @@
+package monkeybase
+
+type Parameter = struct {
+  U32 id
+  U32 groupId
+  F64 value
+}
+

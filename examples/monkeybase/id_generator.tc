@@ -9,9 +9,9 @@ type IdGenerator = class {
 }
 
 // these declarations should be accessible before this line
-type Id = alias u32
-type Float = alias f32
-type Double = alias f64
+type Id = alias U64
+type Float = alias F32
+type Double = alias F64
 
 public IdGenerator = {
 
