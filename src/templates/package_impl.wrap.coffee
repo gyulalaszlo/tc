@@ -163,6 +163,7 @@ inline  ->
       # declare the classes
       for t in not_published.where( _type: "class").value()
         inline ->
+          basics.docstring( t  )
           inline sep: ' ', ->
             out 'class', type_name(t)
           inline ->

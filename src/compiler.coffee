@@ -146,20 +146,20 @@ resolve_typelist = (pack, typelist, scoped)->
       switch
         # C types are already ok, no need to resolve
         when t._type == "ctype"
-          replace_in_typelist typelist, name, { _type: "ctype", name: name, raw: t.c_name }
+          replace_in_typelist typelist, name, { _type: "ctype", name: name, raw: t.c_name, docs: t.docs }
 
         # An alias should point to a resolved orignal
         when t._type == "alias"
           original_type_name = t.original
           resolved = resolve_type(t.original.name, scoped, typelist)
-          replace_in_typelist typelist, name, { _type: "alias", name: name, original: resolved }
+          replace_in_typelist typelist, name, { _type: "alias", name: name, original: resolved, docs: t.docs }
 
         # Classes and structs need their fields resolved
         when t._type in ['class', 'struct']
           fields = []
           for field in t.fields
-            fields.push { name: field.name, type: resolve_type( field.type.name, scoped, typelist ) }
-          replace_in_typelist typelist, name, { _type: t._type, name: name, fields: fields }
+            fields.push { name: field.name, type: resolve_type( field.type.name, scoped, typelist ), docs: field.docs }
+          replace_in_typelist typelist, name, { _type: t._type, name: name, fields: fields, docs: t.docs }
 
 
 # replace a proxy type in the typelist

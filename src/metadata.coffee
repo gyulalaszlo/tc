@@ -46,7 +46,8 @@ class JsonSerializableWithName extends JsonSerializable
 class TypeBase extends JsonSerializableWithName
   package: null
   parse: (decl)->
-  as_json: (data...)-> super({_resolved: true}, data...)
+  set_docs: (docs)-> @docs = docs
+  as_json: (data...)-> super({_resolved: true, docs: @docs}, data...)
 
 # A type class for yet unresolved types
 class ProxyType extends TypeBase
@@ -66,7 +67,7 @@ class StructuredData extends TypeBase
       @fields.push f
 
   # Hook the field parsing
-  parse: (as)-> @make_fields( as.fields )
+  parse: (as)-> super(as); @make_fields( as.fields )
   as_json: (data)-> super( fields: @fields, data )
 
 class Class extends StructuredData
@@ -86,6 +87,7 @@ class Struct extends StructuredData
 class Alias extends TypeBase
   constructor: (@name)->
   parse: (as)->
+    super(as)
     @original = new ProxyType( as.original.name.text )
 
   as_json: -> super( _type: 'alias', original: @original )
@@ -94,6 +96,7 @@ class Alias extends TypeBase
 class CType extends TypeBase
   constructor: (@name)->
   parse: (as)->
+    super(as)
     @c_name = as.c_name.name.text
 
   as_json: -> super( _type: 'ctype', c_name: @c_name )
@@ -205,6 +208,7 @@ make_type_instance = (pkg, name, decl)->
   klass = type_base_map[key]
   throw new Error("Unknown type to instantiate: #{key}") unless klass
   type_instance = new klass(name)
+  type_instance.set_docs( decl.docs )
   type_instance.package = pkg
   type_instance
 
@@ -215,6 +219,7 @@ add_declarations_to_package = (pkg, declarations)->
       when 'TYPEDECL'
         type_name = decl.name.text
         type_instance = make_type_instance( pkg, type_name, decl )
+        # try to add the documentation
         type_instance.parse decl.definition
         # store the type
         pkg.types[type_name] = type_instance

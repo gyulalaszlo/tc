@@ -47,7 +47,7 @@ class ParserPrecompiler
           fs.readFile path, encoding: "UTF-8", (err, data)->
             throw err if err
             compile_source path:path, text: data, (err, src)->
-              console.log "sending #{src.text.length} bytes"
+              throw err if err
               finished(err, src.text)
 
         success: (err, code)->
@@ -66,6 +66,7 @@ class ParserPrecompiler
 
     file_path = path.join( @tmp_dir, "#{key}.pegjs" )
     fs.exists file_path, (exists)->
+      exists = false
       contents = null
       if exists
         fs.readFile file_path, encoding: "UTF-8", (err, data)->
@@ -73,7 +74,6 @@ class ParserPrecompiler
           opts.success( err, data )
       else
         opts.generate (err, data)->
-          console.log "got #{data.length} bytes"
           fs.writeFile file_path, data, (err)->
             winston.info "saved to cache: #{file_path}"
             opts.success( err, data )

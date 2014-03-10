@@ -1,6 +1,6 @@
 
 docstring = (obj)->
-  text = if _.isString( obj ) then obj else obj.docstring
+  text = if _.isString( obj ) then obj else obj.docs
   return unless text
   wrap sep: ' ', no_inline: true, ->
     out "/**"
@@ -10,7 +10,7 @@ docstring = (obj)->
 # Declare a single field
 field_decl = (field)->
   field_type = pack.typelist[field.type]
-  docstring( field_type )
+  docstring( field )
   inline ->
     wrap sep: ' ', ->
       out(type_name(field_type), field.name)

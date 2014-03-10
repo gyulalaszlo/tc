@@ -34,7 +34,7 @@ SE "Statement Terminator ';'"
   = [;\n\r] WS?
 
 DocString "Documentation string"
-  = '"""' (!'"""' . )*
+  = "---" text:(!"---" ch:. { return ch; })* "---" { return text.join(''); }
 ////////////////////////////////////////////////////////////////////////////////
 
 PackageDecl "Package declaration"
@@ -46,7 +46,11 @@ Contents "Compilation Unit contents"
 
 
 RootStatementList "Statement List"
-  = RootStatement*
+  = RootStatementWithDocstring*
+
+RootStatementWithDocstring
+  = doc:(d:DocString WS { return d; })? r:RootStatement { r.docs = doc; return r; }
+
 
 RootStatement "Root declaration statements"
   = TypeStatement

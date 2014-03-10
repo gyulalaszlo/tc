@@ -1,10 +1,14 @@
 package monkeybase
 
+---
+  A simple Generator for sequential Id genration
+---
 type IdGenerator = class {
   Id id;
   Id increment;
 }
 
+--- A test wrapper class ---
 type idGeneratorWrapper = class {
   IdGenerator g
   IdGenerator f
