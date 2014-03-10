@@ -12,6 +12,17 @@ type idGeneratorWrapper = class {
   u32 uses
 }
 
+type idGeneratorWrapper2 = class {
+  IdGenerator g
+  u32 uses
+  IdGenerator g4
+  IdGenerator g3
+  IdGenerator g2
+  u32 uses2
+  u32 uses3
+  u32 uses4
+}
+
 type Range = struct {
   u32 start
   u32 end
@@ -52,8 +63,8 @@ public IdGenerator = {
 
 
   // Reset the counter for the generator
-  Reset = fn() {
-    @id = 0
+  Reset = fn( Id start ) {
+    @id = start
   }
 
 }

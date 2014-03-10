@@ -1,20 +1,125 @@
 
 typedef_inner = (name, original)->
-  wrap sep: " ", contents: [ "typedef", typename(original), name ]
-
-field_list = (fields)->
-  for field in fields
-    field_type = pack.typelist[field.type]
-    wrap ->
-      wrap( sep: ' ', -> out(type_name(field_type), field.name) )
-      out ';'
+  wrap sep: " ", contents: [ "typedef", type_name(original), name ]
 
 class TypenameLookup
   constructor: (@typelist)->
   c_name: (type_id)-> type_name( @typelist[type_id] )
 
 
-build_method_signature = (pack, method, target=null)->
+class StatementListWriter
+  constructor: (@typelist, @method_lists)->
+    @expressions = new ExpressionTreeWriter( @typelist, @method_lists )
+    @types = new TypenameLookup( @typelist )
+
+  list: (statement_list, o=[])->
+    for s in statement_list
+      switch s._type
+
+        when "cassign"
+          # the local variable init
+          inline =>
+            inline sep: ' ', =>
+              inline =>
+                out @types.c_name(s.type)
+              out s.name
+              out '='
+
+              #o.push( @types.c_name(s.type), s.name, '=' )
+              inline =>
+                @expressions.tree( s.expr, o )
+            out ';'
+
+
+        when "expression"
+          inline =>
+            @expressions.tree( s.expr, o )
+            out ';'
+
+
+        when 'return'
+          inline sep: ' ', =>
+            out 'return'
+            #o.push( "return" )
+            @expressions.tree( s.expr, o )
+            out ';'
+            #o.push ';'
+
+        else
+          throw new Error( "Unknown statement type: '#{s._type}'" )
+    # return the mapped value
+    o
+
+
+
+class ExpressionTreeWriter
+  constructor: (@typelist, @method_lists)->
+
+  tree: (expr, o=[])->
+    switch expr._type
+      when "this"
+        out 'this'
+        #o.push "this"
+
+      when "variable"
+        out expr.name
+        #o.push expr.name
+
+      when "literal"
+        out JSON.stringify( expr.value )
+
+      when "member"
+        @tree( expr.base, o )
+        @access_chain( expr.access_chain, o ) 
+
+      else
+        _type = expr._type
+        switch
+          when _type in ["assignment_expr"]
+            inline sep: ' ', =>
+              inline =>
+                @tree( expr.a, o )
+              out expr.op
+              inline =>
+                @tree( expr.b, o )
+          else
+            throw new Error( "Unknown expresssion type: '#{expr._type}'" )
+
+    o
+
+  access_chain: (chain, o)->
+    inline =>
+      for chain_el in chain
+        switch chain_el._type
+
+          # simple property access
+          when "property"
+            out '.'
+            out chain_el.name
+
+docstring = (obj)->
+  text = obj.docstring ? "__NODOC__"
+  wrap sep: ' ', no_inline: true, ->
+    out "/**"
+    inline -> out text
+    out "*/"
+
+# Declare a single field
+field_decl = (field)->
+  field_type = pack.typelist[field.type]
+  docstring( field_type )
+  inline ->
+    wrap sep: ' ', ->
+      out(type_name(field_type), field.name)
+    out ';'
+
+
+# declare a list of fields
+field_list = (fields)->
+  for field in fields
+    field_decl( field )
+
+build_method = (pack, statements, method, target=null)->
   types = new TypenameLookup( pack.typelist )
   # the arg list builder fn
   arg_list_builder = (a)-> { type: type_name(pack.typelist[a.type]), name:a.name }
@@ -29,59 +134,70 @@ build_method_signature = (pack, method, target=null)->
   args =  _.map( method.args, arg_list_builder )
   ret = _.map( method.returns, ret_type_builder )
   # make the wraps
-  wrap ->
-    wrap sep: ' ',->
-      out ret...
-      wrap sep: '::', ->
-        out name...
-      out '('
-      wrap sep:', ', ->
-        wrap sep: ' ', ->
-          for arg in args
-            out arg.type
-            out arg.name
-      out ')'
+  docstring( method )
+  inline sep: ' ', ->
+    inline ->
+      inline sep: ' ', ->
+        out if ret.length > 0 then ret else 'void'
+        inline sep: '::', ->
+          out name...
+      inline sep: ' ', ->
+        wrap start: '(', end: ')', ->
+          inline ->
+            inline sep: ', ', ->
+              for arg in args
+                inline sep: ' ', ->
+                  out arg.type, arg.name
+
+    wrap sep: ' ', ->
+      inline sep: ' ', start: '{', end: '}', ->
+        statements.list( method.body )
+
+statements = new StatementListWriter( pack.typelist, pack.method_lists )
+
+wrap ->
+  inline ->
+    inline sep: ' ', ->
+      out 'namespace', '{'
+
+    wrap ->
+      not_published = _.chain( pack.typelist ).where({ public: false })
+
+      # first the aliases, so we are safe
+      #for t in not_published.where( _type: "alias").value()
+        #log "hello", t
+        #original = pack.typelist[t.original]
+        #wrap sep: " ", contents: typedef_inner(t.name, original )
+        ##c.tokens "typedef", type_name(original), t.name, ";"
+
+      # declare the public structs used
+      #for t in not_published.where( _type: "struct").value()
+        #wrap "{", "};", "struct", type_name(t), ->
+          #field_list(c, pack, t.fields )
+
+      # declare the classes
+      for t in not_published.where( _type: "class").value()
+        inline sep: ' ', ->
+          out 'class', type_name(t)
+          wrap start: "{", end: '};', ->
+            field_list( t.fields )
+
+    inline ->
+      out "}"
 
 
+  inline ->
+    inline sep: ' ', ->
+      wrap start: 'namespace', end:'{', sep: '::', ->
+        out pack.name
 
-wrap start:"namespace {", end:'}', ->
-  not_published = _.chain( pack.typelist ).where({ public: false })
+    wrap no_inline: true, ->
+      # put the not-inlined method bodies
+      for method_list in pack.method_lists
+        target = pack.typelist[method_list.target]
+        for method in method_list.methods
+          build_method(pack, statements, method, target)
 
-  # first the aliases, so we are safe
-  #for t in not_published.where( _type: "alias").value()
-    #log "hello", t
-    #original = pack.typelist[t.original]
-    #wrap sep: " ", contents: typedef_inner(t.name, original )
-    ##c.tokens "typedef", type_name(original), t.name, ";"
-
-  # declare the public structs used
-  #for t in not_published.where( _type: "struct").value()
-    #wrap "{", "};", "struct", type_name(t), ->
-      #field_list(c, pack, t.fields )
-
-  # forward-declare the classes
-  for t in not_published.where( _type: "class").value()
-    #name_wrap = wrap sep: ' ', ['class', type_name(t) ]
-    wrap start: "class #{type_name(t)} {", end: '};', ->
-      #wrap start:"{", end:"};", before: wrap( ["class" ], type_name(t), ->
-      field_list( t.fields )
-
-#statements = new StatementListWriter( pack.typelist, pack.method_lists )
-wrap start:"namespace #{pack.name } {", end:"}", ->
-  # put the not-inlined method bodies
-  for method_list in pack.method_lists
-    target = pack.typelist[method_list.target]
-
-    for method in method_list.methods
-      wrap sep: ' ', ->
-        build_method_signature(pack, method, target)
-        wrap start: '{', end: '}', ->
-          out "/**/"
-        #wrap "{", "}", build_method_signature(pack, method, target)..., ->
-
-        #o = []
-        #statements.list( method.body, o )
-        #c.tokens o...
-        #for statement in method.body
-          #c.tokens JSON.stringify(statement)
+    inline ->
+      out "}"
 

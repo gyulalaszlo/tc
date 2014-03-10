@@ -29,8 +29,9 @@ build_impl_file = (pack, pack_dir, options)->
   wrap_tpl.load "package_impl", (tpl)->
     tpl_res =  tpl( pack: pack, type_name: util.type_name  )
     #render_res = wrap_tpl.render( tpl_res )
-    console.log tpl_res
-    #console.log JSON.stringify( render_res , null, 2  )
+    #console.log tpl_res.lines
+    console.log tpl_res.toString()
+    #console.log JSON.stringify( tpl_res , null, 2  )
   #ares._tokens
 
 

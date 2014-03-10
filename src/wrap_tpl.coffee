@@ -7,7 +7,7 @@ fs = require 'fs'
 path = require 'path'
 vm = require 'vm'
 
-util = require './util'
+util = require 'util'
 
 wrap_tpl = exports
 
@@ -44,6 +44,42 @@ class Stack
     @tokens new_frame
 
 
+class RenderBuffer
+  constructor: (@options)->
+    @lines = []
+    @line = []
+    @indent = 0
+
+  out: (strs...)-> @line.push strs...
+
+
+  nl: -> @flush()
+
+  flush: ->
+    return unless @line.length > 0
+    @lines.push {indent: @indent, tokens: @line}
+    @line = []
+
+
+  with_indent: (amt, fn)->
+    @add_indent amt
+    fn()
+    @add_indent amt * -1
+
+  add_indent: (amt)->
+    return if amt == 0
+    @flush()
+    @indent += amt
+
+
+  toString: ()->
+    @flush()
+    opts = options
+    make_indent = (width)-> _s.repeat( opts.indentStr, width )
+    line_mapper = (l)-> [ make_indent( l.indent ), _s.trim( l.tokens.join('') ) ].join('')
+    mapped_lines = _.map( @lines, line_mapper)
+    mapped_lines.join("\n")
+
 
 # Load a wrap template
 load_wrap_file = (filename, callback)->
@@ -64,6 +100,7 @@ parse_wrap_file = (file_path, callback)->
     tpl_func = (data)->
       # The stack used to store the results
       stack = new Stack
+      stack.tokens { _inline: true }
       # the function to create a wrap
       wrap_fn = ( opts, callback )->
         callback = callback ? opts
@@ -71,8 +108,18 @@ parse_wrap_file = (file_path, callback)->
         stack.tokens opts.start if opts.start
         stack.with_level ->
           stack.tokens { _separator: true, string: opts.sep } if opts.sep
+          stack.tokens { _force_break: true } if opts.break
+          stack.tokens { _inline: true } if opts.inline
           callback()
         stack.tokens opts.end if opts.end
+
+
+      inline_fn = (opts, callback)->
+        unless callback
+          callback = opts
+          opts = {}
+        opts.inline = true
+        wrap_fn( opts, callback)
 
       # the function to write to a new buffer
       out_fn = (strs...)-> stack.tokens(strs...)
@@ -82,6 +129,7 @@ parse_wrap_file = (file_path, callback)->
         _: _
         out: out_fn
         wrap: wrap_fn
+        inline: inline_fn
         log: console.log
       }
       # create the context
@@ -93,115 +141,108 @@ parse_wrap_file = (file_path, callback)->
     # return the wrapped template function
     callback( tpl_func )
 
-
-apply_separators = (wrap)->
-  separator = undefined
-  separator = wrap[0].string if wrap[0]._separator
-
-  tokens = for el in wrap
+# Filter the list of simple wraps.
+convert_input_wrap = (wrap)->
+  out = { tokens: [] }
+  tokens = out.tokens
+  for el in wrap
     switch
-      when _.isArray( el ) then apply_separators(el)
-      when el._separator then
-      else el
+      when _.isArray( el ) then tokens.push( convert_input_wrap(el) )
+      when el._separator then out.separator = el.string
+      when el._force_break then out.force_break = true
+      when el._inline then out.inline = true
+      else
+        tokens.push el
 
-  #if separator
-    #tokens = util.array_join(tokens, separator)
-  {tokens: tokens, separator: separator }
+  out
 
-class RenderBuffer
-  constructor: (@options)->
-    @lines = []
-    @line = []
-    @indent = 0
-
-  out: (strs...)->
-    @line.push strs...
-
-
-  nl: -> @flush()
-
-  flush: ->
-    return if @line.length == 0
-    @lines.push {indent: @indent, tokens: @line}
-    @line = []
-
-
-  with_indent: (fn)->
-    @flush()
-    @indent += 1
-    fn()
-    @indent -= 1
-
-
-  toString: ()->
-    @flush()
-    opts = options
-    make_indent = (width)-> _s.repeat( opts.indentStr, width )
-    line_mapper = (l)-> [ make_indent( l.indent - 1 ), l.tokens...].join('')
-    mapped_lines = _.map( @lines, line_mapper)
-    console.log mapped_lines
-    mapped_lines.join("\n")
-
-
-calculate_lengths = (wrap)->
-
-render_outer = (wrap)->
-  #console.log JSON.stringify(wrap, null, 2)
-  render_inner( wrap )
-
-render_inner = (wrap)->
-  console.log "Wrap innder:", wrap
-  elements = []
-  # collect all elements, recurse depth-first
-  for el in wrap.tokens
-    if _.isArray(el)
-      elements.push render_inner(el)
-    else
-      elements.push el
-
-  # check the length
-  str_len = (memo, str)->
-    memo + switch
-      when _.isString( str ) then str.length
-      when str.el
-        if str._nl then 0 else _.reduce( str.el, str_len, 0 )
-
-  joined_len = _.reduce elements, str_len, 0
-  # prepare the output
-  o = { _nl:false,  el: elements, sep: wrap.separator }
-  # if the joined string is longer then the target width
-  # we join the string by a newline
-  if joined_len > options.width
-    o._nl = true
-  # return the node
-  o
 
 merge_render_output = (input)->
-  #unless buffer
-  #console.log JSON.stringify(input, null, 2)
-  # create the buffer if necessary
-  buffer = new RenderBuffer(options)
-  _merge_render_output( input, buffer )
-  buffer.toString()
+  renderer = new WrapRenderer
+  renderer.calc_length input
+  renderer.add_level input
 
 
-_merge_render_output = (input, buffer)->
-  # check the joiner
-  wrap_fn = (fn)-> fn()
-  wrap_fn = _.bind( buffer.with_indent, buffer ) if input._nl
 
-  wrap_fn ->
-    return unless input.el
-    for t in input.el
+class WrapRenderer
+
+  constructor: (@max_line_length)->
+
+
+  add_level: (lvl)->
+    @calc_length( lvl )
+    @check_merge( lvl )
+    @create_merge( lvl )
+
+  calc_length: (lvl)->
+    # the length of onlt the string tokens
+    local_len = 0
+    # the length with the children included
+    len = 0
+    for e in lvl.tokens
       switch
-        when _.isString(t) then buffer.out t
-        else _merge_render_output(t, buffer)
-      buffer.nl() if input._nl
+        when e.tokens
+          len += @calc_length(e)
+        else
+          len += e.length
+          local_len += e.length
+    lvl._length = len
+    lvl._local_length = local_len
+    len
+
+  check_merge: (lvl, indent = 0)->
+    # a level should be nl-wrapped if any of its children are NL wrapped
+    # or the line length exceeds the available
+    INDENT_WIDTH = 4
+    LINE_WIDTH = 80
+    indent_amt = INDENT_WIDTH * indent
+
+    #lvl._indent = indent
+    # if the levels length exceds the line width
+    if lvl._length + indent_amt > LINE_WIDTH
+      lvl._nl = true
+      indent += 1
+    else
+      lvl._nl = false
+
+    for token in lvl.tokens
+      if token.tokens
+        @check_merge( token, indent )
+
+
+    lvl
+
+
+  create_merge: (lvl)->
+    buffer=new RenderBuffer
+    @_do_merge( lvl, buffer )
+    buffer
+
+  _do_merge: (lvl, buffer)->
+    # output strings as-is
+    #return buffer.out( lvl ) unless lvl.tokens
+    indent_amt = if lvl._nl then 1 else 0
+    indent_amt = 0 if lvl.inline
+
+    last_idx = lvl.tokens.length - 1
+    for t,i in lvl.tokens
+      switch
+        when t.tokens
+          buffer.with_indent indent_amt, =>
+            @_do_merge t, buffer
+            #buffer.nl() if lvl._nl
+        else
+          buffer.out t
+
+      buffer.out lvl.separator if lvl.separator && i != last_idx
 
 
 
-#render = _.compose( merge_render_output, render_inner )
-render = _.compose( merge_render_output, render_outer, apply_separators )
+
+render = _.compose( merge_render_output, convert_input_wrap )
+
+
+
 
 _.extend wrap_tpl,
   options: options
