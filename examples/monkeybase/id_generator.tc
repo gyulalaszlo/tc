@@ -1,35 +1,11 @@
 package monkeybase
 
----
+"""
   A simple Generator for sequential Id genration
----
+"""
 type IdGenerator = class {
   Id id;
   Id increment;
-}
-
---- A test wrapper class ---
-type idGeneratorWrapper = class {
-  IdGenerator g
-  IdGenerator f
-  Id i
-  u32 uses
-}
-
-type idGeneratorWrapper2 = class {
-  IdGenerator g
-  u32 uses
-  IdGenerator g4
-  IdGenerator g3
-  IdGenerator g2
-  u32 uses2
-  u32 uses3
-  u32 uses4
-}
-
-type Range = struct {
-  u32 start
-  u32 end
 }
 
 // these declarations should be accessible before this line
@@ -39,39 +15,34 @@ type Double = alias f64
 
 public IdGenerator = {
 
-  // Get the id and advance the generator
+
+  """
+    empty constructor to start from zero
+  """
+  Constructor = fn() {
+      @increment = 1
+      this.increment = 1
+  }
+
+  Constructor = fn ( Id start, Id increment ) {
+      @id = start
+      @increment = increment
+  }
+
+  """
+    Get the id and advance the generator
+  """
   Next = fn() Id {
-    //out = id
     out := @id
     @id += 1
     return out
   }
 
 
-  //// empty constructor to start from zero
-  Constructor = fn() {
-      @increment = 1
-      this.increment = 1
-      this.increment = 1
-      this.increment = 1
-      this.increment = 1
-      this.increment = 1
-      this.increment = 1
-      //@should.get.dust().versus.Riki()
-      //this.one.should.get.dust().versus.Riki( @increment + 1)
-  }
 
-  // if the start is fixed
-  Constructor = fn ( Id start, Id increment ) {
-      @id = start
-      @increment = increment
-      //@local_outworld()
-      //outworld() + outworld.destroy()
-  }
-
-
-
-  // Reset the counter for the generator
+  """
+    Reset the counter for the generator
+  """
   Reset = fn( Id start ) {
     @id = start
   }

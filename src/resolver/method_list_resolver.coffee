@@ -103,6 +103,8 @@ class SingleDefinitionResolver
     # add the arguments and returns to the scope
     for arg in args
       @scope.set( arg.name, _type: 'arg', type: arg.type, name: arg.name )
+    # get the docs
+    method_def.docs = method.docs
     # resolve the body
     method_def.body = @resolve_body method_def, method.body
     method_def

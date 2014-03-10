@@ -119,12 +119,13 @@ class MethodArgument extends JsonSerializableWithName
 
 class Method extends JsonSerializableWithName
   constructor: (@name )->
-  as_json: -> super( args: @args, returns: @returns, body: @body )
+  as_json: -> super( args: @args, returns: @returns, body: @body, docs: @docs )
 
   parse: (decl)->
     @args = []
     @returns = []
     @body = []
+    @docs = decl.docs
     # if the method has arguments, add them
     for arg in decl.func.args.list
       m_arg = new MethodArgument( arg.decl.name.text )

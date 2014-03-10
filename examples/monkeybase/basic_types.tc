@@ -5,3 +5,8 @@ type f64 = C double
 type u32 = C uint32_t
 type i32 = C int32_t
 
+type Range = struct {
+  u32 start
+  u32 end
+}
+

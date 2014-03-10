@@ -34,7 +34,7 @@ SE "Statement Terminator ';'"
   = [;\n\r] WS?
 
 DocString "Documentation string"
-  = "---" text:(!"---" ch:. { return ch; })* "---" { return text.join(''); }
+  = '"""' text:(!'"""' ch:. { return ch; })* '"""' { return text.join(''); }
 ////////////////////////////////////////////////////////////////////////////////
 
 PackageDecl "Package declaration"
@@ -84,8 +84,10 @@ StructDefinition_
 
 
 StructFieldList_
-  = "{" WS fields:FieldDeclaration* "}" ->{{ FIELDS with fields }}
+  = "{" WS fields:FieldDeclarationWithDocstring* "}" ->{{ FIELDS with fields }}
 
+FieldDeclarationWithDocstring
+  = doc:(d:DocString WS { return d; })? r:FieldDeclaration { r.docs = doc; return r; }
 
 FieldDeclaration "Struct Field Declaration"
   = decl:VariableDeclaration_ SE { return decl; }
@@ -125,7 +127,10 @@ MethodList "Method list"
     ->{{ METHODS with name, access, body }}
 
 MethodListBody "Method List body"
-  = "{" WS  decls:MethodDeclaration* "}" { return decls; }
+  = "{" WS  decls:MethodDeclarationWithDocstring* "}" { return decls; }
+
+MethodDeclarationWithDocstring
+  = doc:(d:DocString WS { return d; })? r:MethodDeclaration { r.docs = doc; return r; }
 
 MethodDeclaration "Method Declaration"
   = name:Identifier WS "=" WS func:FunctionDeclaration
