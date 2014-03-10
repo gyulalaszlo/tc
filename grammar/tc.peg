@@ -32,6 +32,9 @@ WS "whitespace"
 
 SE "Statement Terminator ';'"
   = [;\n\r] WS?
+
+DocString "Documentation string"
+  = '"""' (!'"""' . )*
 ////////////////////////////////////////////////////////////////////////////////
 
 PackageDecl "Package declaration"
@@ -52,7 +55,6 @@ RootStatement "Root declaration statements"
 ////////////////////////////////////////////////////////////////////////////////
 
 TypeStatement "Type Statement"
-  //= name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE // { return ["TYPEDECL", name, definition]; }
   = name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE ->{{ TYPEDECL with name, definition }}
 
 

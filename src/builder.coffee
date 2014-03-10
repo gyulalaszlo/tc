@@ -11,28 +11,49 @@ wrap_tpl = require './wrap_tpl'
 
 util = require './util'
 
+class TemplateContext
+  constructor: (@pack, @pack_dir, @options)->
+    @context = {
+      pack: @pack
+      type_name: util.type_name
+      published: _.chain( @pack.typelist ).where({ public: true })
+      not_published: _.chain( @pack.typelist ).where({ public: false })
+    }
+
+  build_file: (output_file, template_name, data={})->
+    wrap_tpl.load template_name, (tpl)=>
+      tpl_data = _.extend( {}, @context, data )
+      res =  tpl( tpl_data  )
+      @pack_dir.output_file output_file, res.toString()
+
 build_package_files = (pack, pack_dir, options)->
-  build_types_file(pack, pack_dir, options)
+  tpl = new TemplateContext( pack, pack_dir, options)
+  tpl.build_file  "#{_s.underscored pack.name}_types.h", "types"
+  tpl.build_file  "#{_s.underscored pack.name}.cc", "package_impl"
+  #build_types_file(pack, pack_dir, options)
   build_class_files(pack, pack_dir, options)
-  build_impl_file(pack, pack_dir, options)
+  #build_impl_file(pack, pack_dir, options)
 
 
 build_types_file = (pack, pack_dir, options)->
-  res = templates.run_c_tpl types_tpl, pack
-  pack_dir.output_file "#{_s.underscored pack.name}_types.h", res._tokens.toString()
+  #res = templates.run_c_tpl types_tpl, pack
+  #pack_dir.output_file "#{_s.underscored pack.name}_types.h", res._tokens.toString()
+
+  wrap_tpl.load "types", (tpl)->
+    res =  tpl( pack: pack, type_name: util.type_name  )
+    pack_dir.output_file "#{_s.underscored pack.name}_types.h", res.toString()
+    #pack_dir.output_file "#{_s.underscored pack.name}.cc", tpl_res.toString()
+
   #res._tokens
 
 build_impl_file = (pack, pack_dir, options)->
-  res = templates.run_c_tpl package_impl, pack
-  pack_dir.output_file "#{_s.underscored pack.name}.cc", res._tokens.toString()
+  #res = templates.run_c_tpl package_impl, pack
+  #pack_dir.output_file "#{_s.underscored pack.name}.cc", res._tokens.toString()
 
   wrap_tpl.load "package_impl", (tpl)->
     tpl_res =  tpl( pack: pack, type_name: util.type_name  )
-    #render_res = wrap_tpl.render( tpl_res )
-    #console.log tpl_res.lines
-    console.log tpl_res.toString()
-    #console.log JSON.stringify( tpl_res , null, 2  )
-  #ares._tokens
+    #console.log tpl_res.toString()
+    pack_dir.output_file "#{_s.underscored pack.name}.cc", tpl_res.toString()
 
 
 index_in_typelist = (typelist, name)->

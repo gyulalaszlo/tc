@@ -48,6 +48,11 @@ public IdGenerator = {
   Constructor = fn() {
       @increment = 1
       this.increment = 1
+      this.increment = 1
+      this.increment = 1
+      this.increment = 1
+      this.increment = 1
+      this.increment = 1
       //@should.get.dust().versus.Riki()
       //this.one.should.get.dust().versus.Riki( @increment + 1)
   }

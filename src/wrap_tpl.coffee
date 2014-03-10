@@ -81,89 +81,6 @@ class RenderBuffer
     mapped_lines.join("\n")
 
 
-# Load a wrap template
-load_wrap_file = (filename, callback)->
-  possible_file_name = (b)-> path.join(b, "#{filename}#{options.extension}")
-  # find a matching file
-  possible_locations = _.map( options.basedirs, possible_file_name )
-  async.detectSeries possible_locations, fs.exists, (f)->
-    return parse_wrap_file(f, callback)
-
-
-parse_wrap_file = (file_path, callback)->
-  fs.readFile file_path, encoding: "UTF-8", (err, contents)->
-    # compile down to coffeescript
-    coffee_options = bare: true
-    compiled = coffee.compile( contents, coffee_options )
-    wrapped_fn = vm.createScript( compiled, file_path )
-    # the function to run the template
-    tpl_func = (data)->
-      # The stack used to store the results
-      stack = new Stack
-      stack.tokens { _inline: true }
-      # the function to create a wrap
-      wrap_fn = ( opts, callback )->
-        callback = callback ? opts
-        # and the start and end tokens need to go in the start frame
-        stack.tokens opts.start if opts.start
-        stack.with_level ->
-          stack.tokens { _separator: true, string: opts.sep } if opts.sep
-          stack.tokens { _force_break: true } if opts.break
-          stack.tokens { _inline: true } if opts.inline
-          callback()
-        stack.tokens opts.end if opts.end
-
-
-      inline_fn = (opts, callback)->
-        unless callback
-          callback = opts
-          opts = {}
-        opts.inline = true
-        wrap_fn( opts, callback)
-
-      # the function to write to a new buffer
-      out_fn = (strs...)-> stack.tokens(strs...)
-      # some helpers
-      helpers = {
-        # add underscore for easy usage
-        _: _
-        out: out_fn
-        wrap: wrap_fn
-        inline: inline_fn
-        log: console.log
-      }
-      # create the context
-      context = _.extend( helpers, data )
-      # run via the cached function
-      wrapped_fn.runInNewContext( context )
-      render( stack.current() )
-
-    # return the wrapped template function
-    callback( tpl_func )
-
-# Filter the list of simple wraps.
-convert_input_wrap = (wrap)->
-  out = { tokens: [] }
-  tokens = out.tokens
-  for el in wrap
-    switch
-      when _.isArray( el ) then tokens.push( convert_input_wrap(el) )
-      when el._separator then out.separator = el.string
-      when el._force_break then out.force_break = true
-      when el._inline then out.inline = true
-      else
-        tokens.push el
-
-  out
-
-
-merge_render_output = (input)->
-  renderer = new WrapRenderer
-  renderer.calc_length input
-  renderer.add_level input
-
-
-
 class WrapRenderer
 
   constructor: (@max_line_length)->
@@ -196,20 +113,17 @@ class WrapRenderer
     INDENT_WIDTH = 4
     LINE_WIDTH = 80
     indent_amt = INDENT_WIDTH * indent
-
-    #lvl._indent = indent
     # if the levels length exceds the line width
     if lvl._length + indent_amt > LINE_WIDTH
       lvl._nl = true
       indent += 1
     else
       lvl._nl = false
-
+    # add break to the signaled ones
+    lvl._nl = true if lvl.break
     for token in lvl.tokens
       if token.tokens
         @check_merge( token, indent )
-
-
     lvl
 
 
@@ -223,6 +137,8 @@ class WrapRenderer
     #return buffer.out( lvl ) unless lvl.tokens
     indent_amt = if lvl._nl then 1 else 0
     indent_amt = 0 if lvl.inline
+    separator = lvl.separator
+    separator = undefined if separator == " " and lvl._nl
 
     last_idx = lvl.tokens.length - 1
     for t,i in lvl.tokens
@@ -230,11 +146,155 @@ class WrapRenderer
         when t.tokens
           buffer.with_indent indent_amt, =>
             @_do_merge t, buffer
-            #buffer.nl() if lvl._nl
+            buffer.nl() if lvl._nl && lvl.inline
+        when t._line
+          buffer.nl()
+          buffer.out t.string
+          buffer.nl()
         else
           buffer.out t
 
-      buffer.out lvl.separator if lvl.separator && i != last_idx
+      buffer.out separator if separator && i != last_idx
+
+
+find_wrap_file = (filename, callback)->
+  possible_file_name = (b)-> path.join(b, "#{filename}#{options.extension}")
+  # find a matching file
+  possible_locations = _.map( options.basedirs, possible_file_name )
+  async.detectSeries possible_locations, fs.exists, (f)->
+    callback(f)
+
+# Load a wrap template
+load_wrap_file = (filename, callback)->
+  find_wrap_file filename, (f)->
+    throw err unless f
+    #possible_file_name = (b)-> path.join(b, "#{filename}#{options.extension}")
+    ## find a matching file
+    #possible_locations = _.map( options.basedirs, possible_file_name )
+    #async.detectSeries possible_locations, fs.exists, (f)->
+    return parse_wrap_file(f, callback)
+
+# precompile with coffee-script
+precompile_coffee = (contents)->
+    coffee_options = bare: true
+    coffee.compile( contents, coffee_options )
+
+
+# precompile (load and coffe-compile) a template file
+precompile_tpl = (file_path, callback)->
+  fs.readFile file_path, encoding: "UTF-8", (err, contents)->
+    throw err if err
+    # compile down to coffeescript
+    #coffee_options = bare: true
+    #compiled = coffee.compile( contents, coffee_options )
+    compiled = precompile_coffee( contents ) 
+    callback( err, compiled )
+
+
+# the runner function for templates (binds the helpers)
+tpl_runner_fn = (data, callbacks)->
+  # The stack used to store the results
+  stack = new Stack
+  stack.tokens { _inline: true }
+  # the function to create a wrap
+  wrap_fn = ( opts, callback )->
+    callback = callback ? opts
+    # and the start and end tokens need to go in the start frame
+    stack.tokens opts.start if opts.start
+    stack.with_level ->
+      stack.tokens { _separator: true, string: opts.sep } if opts.sep
+      stack.tokens { _force_break: true } if opts.break
+      stack.tokens { _inline: true } if opts.inline
+      callback()
+    stack.tokens opts.end if opts.end
+
+
+  inline_fn = (opts, callback)->
+    unless callback
+      callback = opts
+      opts = {}
+    opts.inline = true
+    wrap_fn( opts, callback)
+
+  exported_symbols = {}
+
+  include_fn = (filename, finish_callback)->
+    callbacks.on_include helpers, filename
+    exported_symbols[filename]
+    #, (err)->
+      #finish_callback( exported_symbols[filename] )
+
+  export_fn = (filename, symbols={})->
+    exported_symbols[filename] = symbols
+
+  # the function to write to a new buffer
+  out_fn = (strs...)-> stack.tokens(strs...)
+
+  line_fn = (str)-> stack.tokens({ _line: true, string: str })
+  # some helpers
+  helpers = {
+    # add underscore for easy usage
+    _: _
+    _s: _s
+    out: out_fn
+    line: line_fn
+    wrap: wrap_fn
+    inline: inline_fn
+    log: console.log
+
+    include: include_fn
+    exports: export_fn
+  }
+  # create the context
+  context = _.extend( helpers, data )
+  # run via the cached function
+  callbacks.on_render( context )
+  render( stack.current() )
+
+
+parse_wrap_file = (file_path, callback)->
+  precompile_tpl file_path, (err, compiled)->
+    wrapped_fn = vm.createScript( compiled, file_path )
+    # create an adapter for vm.runInNewContext()
+    tpl_func = (data)->
+      tpl_runner_fn data,
+        on_render: (context)-> wrapped_fn.runInNewContext( context )
+        on_include: (context, name, finished_callback)->
+          try
+            local_path = path.dirname( file_path )
+            local_tpl_file = path.join( local_path, "_#{name}.wrap.coffee" )
+            contents = fs.readFileSync local_tpl_file, encoding: "UTF-8"
+            compiled = precompile_coffee( contents )
+            included = vm.createScript( compiled, file_path )
+            included.runInNewContext( context )
+          catch err
+            throw err
+
+    # return the wrapped template function
+    callback( tpl_func )
+
+# Filter the list of simple wraps.
+convert_input_wrap = (wrap)->
+  out = { tokens: [] }
+  tokens = out.tokens
+  for el in wrap
+    switch
+      when _.isArray( el ) then tokens.push( convert_input_wrap(el) )
+      when el._separator then out.separator = el.string
+      when el._force_break then out.force_break = true
+      when el._inline then out.inline = true
+      else
+        tokens.push el
+
+  out
+
+
+merge_render_output = (input)->
+  renderer = new WrapRenderer
+  renderer.calc_length input
+  renderer.add_level input
+
+
 
 
 

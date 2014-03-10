@@ -38,12 +38,11 @@ class StatementListWriter
 
 
         when 'return'
-          inline sep: ' ', =>
-            out 'return'
-            #o.push( "return" )
-            @expressions.tree( s.expr, o )
+          inline =>
+            inline sep: ' ', =>
+              out 'return'
+              @expressions.tree( s.expr, o )
             out ';'
-            #o.push ';'
 
         else
           throw new Error( "Unknown statement type: '#{s._type}'" )
@@ -97,28 +96,6 @@ class ExpressionTreeWriter
             out '.'
             out chain_el.name
 
-docstring = (obj)->
-  text = obj.docstring ? "__NODOC__"
-  wrap sep: ' ', no_inline: true, ->
-    out "/**"
-    inline -> out text
-    out "*/"
-
-# Declare a single field
-field_decl = (field)->
-  field_type = pack.typelist[field.type]
-  docstring( field_type )
-  inline ->
-    wrap sep: ' ', ->
-      out(type_name(field_type), field.name)
-    out ';'
-
-
-# declare a list of fields
-field_list = (fields)->
-  for field in fields
-    field_decl( field )
-
 build_method = (pack, statements, method, target=null)->
   types = new TypenameLookup( pack.typelist )
   # the arg list builder fn
@@ -134,7 +111,7 @@ build_method = (pack, statements, method, target=null)->
   args =  _.map( method.args, arg_list_builder )
   ret = _.map( method.returns, ret_type_builder )
   # make the wraps
-  docstring( method )
+  basics.docstring( method )
   inline sep: ' ', ->
     inline ->
       inline sep: ' ', ->
@@ -153,15 +130,23 @@ build_method = (pack, statements, method, target=null)->
       inline sep: ' ', start: '{', end: '}', ->
         statements.list( method.body )
 
+basics = include 'basics'
+
 statements = new StatementListWriter( pack.typelist, pack.method_lists )
 
-wrap ->
+line "#include \"#{pack.name}_types.h\""
+
+# add included classes from the current package
+for klass in published.where( _type: "class" ).value()
+  line "#include \"#{_s.underscored( klass.name )}.h\""
+
+
+inline  ->
   inline ->
     inline sep: ' ', ->
       out 'namespace', '{'
 
     wrap ->
-      not_published = _.chain( pack.typelist ).where({ public: false })
 
       # first the aliases, so we are safe
       #for t in not_published.where( _type: "alias").value()
@@ -177,10 +162,12 @@ wrap ->
 
       # declare the classes
       for t in not_published.where( _type: "class").value()
-        inline sep: ' ', ->
-          out 'class', type_name(t)
-          wrap start: "{", end: '};', ->
-            field_list( t.fields )
+        inline ->
+          inline sep: ' ', ->
+            out 'class', type_name(t)
+          inline ->
+            wrap start: "{", end: '};', sep: ' ', ->
+              basics.field_list( t.fields )
 
     inline ->
       out "}"
