@@ -13,10 +13,57 @@ field_decl = (field)->
   docstring( field )
   inline ->
     wrap sep: ' ', ->
-      out(type_name(field_type), field.name)
+      variable_with_type( field_type, field.name )
+      #out(type_name(field_type), field.name)
     out ';'
 
+# Output a declaration for a "<type> <name>" pair
+# that matches the C type declaration standard
+# (pointers, references, arrays should be declared
+# in the correct way)
+variable_with_type = (type, name)->
 
+  resolve_base_type = (base_type)->
+    tname = base_type._type
+    exported_modifiers = []
+    switch
+      # CTYPEs are output directly
+      when tname == 'ctype' then out type.raw
+      # ALIAS, CLASS and STRUCT types are referenced 
+      # by their names
+      when tname in ['alias', 'class', 'struct' ]
+        out type.name
+      # EXTENDED types
+      when tname == 'extended'
+        # add the extensions passed from the base type
+        # to our exported extensions
+        child_exports =  resolve_base_type( pack.typelist[base_type.base] )
+        #winston.log "child exports: ", child_exports
+        exported_modifiers  = exported_modifiers.concat( child_exports )
+        for ext in base_type.extensions
+          switch ext._type
+            when 'array'
+              exported_modifiers.push "[", ext.size.toString(), ']'
+            when 'pointer' then out '*'
+            when 'reference' then out '&'
+              
+      else
+        throw new Error("Cannot output 'variable_with_type' type: #{tname}")
+    return exported_modifiers
+        
+
+  
+  # the topmost wrap of the type
+  inline ->
+    passed_extensions = []
+    # the type name wrap
+    wrap ->
+      passed_extensions = resolve_base_type( type )
+    wrap ->
+      out name
+      for e in passed_extensions
+        out e
+      
 # declare a list of fields
 field_list = (fields)->
   for field in fields

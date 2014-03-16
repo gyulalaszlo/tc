@@ -32,7 +32,11 @@ class Stack
 
   # append a list of tokens to the current level
   tokens: (tokens...)->
-    @current().push(tokens...)
+    for t in tokens
+      t = "<ERROR>" unless t
+        #throw new Error("Tried to push null token #{tokens}, buffer: #{JSON.stringify(@levels)}")
+      #else console.log t
+      @current().push(t)
 
   with_level: (callback)->
     outer_frame = @current()
@@ -278,6 +282,7 @@ convert_input_wrap = (wrap)->
   out = { tokens: [] }
   tokens = out.tokens
   for el in wrap
+    #continue unless el
     switch
       when _.isArray( el ) then tokens.push( convert_input_wrap(el) )
       when el._separator then out.separator = el.string
