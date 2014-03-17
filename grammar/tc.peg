@@ -55,15 +55,13 @@ RootStatementWithDocstring
 RootStatement "Root declaration statements"
   = TypeStatement
   / MethodList
+  / GlobalMethodDeclaration
 
 ////////////////////////////////////////////////////////////////////////////////
 
 TypeStatement "Type Statement"
-  = name:TypeStatementDeclaration "=" WS definition:TypeDefinition_ SE ->{{ TYPEDECL with name, definition }}
+  = "type" WS name:Identifier WS "=" WS definition:TypeDefinition_ SE ->{{ TYPEDECL with name, definition }}
 
-
-TypeStatementDeclaration "Type Declaration"
-  = "type" WS name: Identifier WS { return name; }
 
 
 TypeDefinition_ "Type Definition"
@@ -153,7 +151,7 @@ MethodAccessor "Method acess controll"
 
 
 FunctionDeclaration "Function declaration"
-  = "fn" WS args:FunctionArgList returns:FunctionReturnType body:FunctionBody
+  = args:FunctionArgList "->" WS returns:FunctionReturnType body:FunctionBody
     ->{{ FUNC with args, body, returns }}
 
 FunctionArgList "Type list for function parameters/return values"
@@ -178,6 +176,13 @@ FunctionArgumentMore
 
 FunctionBody
   = "{" WS c:FunctionBodyContents  "}" WS { return c; }
+
+////////////////////////////////////////////////////////////////////////////////
+
+GlobalMethodDeclaration "Package global method declaration"
+  = "func" WS name:Identifier WS "=" WS
+    func:FunctionDeclaration
+    ->{{ UNBOUND_METHOD with name, func }}
 
 ////////////////////////////////////////////////////////////////////////////////
 

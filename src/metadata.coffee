@@ -29,10 +29,11 @@ class Package
     @symbols = {}
     @types = {}
     @method_lists = []
+    @unbound_methods = []
 
   classes: ->
     #_.where( @symbols, type:
-  as_json: -> as_json({ name: @name, types: @types, symbols: @symbols, method_lists: @method_lists })
+  as_json: -> as_json({ name: @name, types: @types, symbols: @symbols, method_lists: @method_lists, unbound_methods: @unbound_methods })
 
 # Base class for serialization
 class JsonSerializable
@@ -116,9 +117,10 @@ class CType extends TypeBase
 class Field extends JsonSerializableWithName
   constructor: (data)->
     @name = data.name.text
+    @docs = data.docs
     @type = new ProxyType( data.type.name.text, data.type )
 
-  as_json: -> super( type: @type )
+  as_json: -> super( type: @type, docs: @docs )
 
 
 
@@ -244,6 +246,15 @@ add_declarations_to_package = (pkg, declarations)->
         method_list = new MethodList( type_instance, decl.access )
         method_list.parse decl.body
         pkg.method_lists.push method_list
+
+      # Unbound methods 
+      when 'UNBOUND_METHOD'
+        method = new Method( decl.name.text )
+        method.parse decl
+        pkg.unbound_methods.push method
+
+      else
+        throw new Error( "Unknown declaration type: '#{decl._type}'" )
 
   pkg
 

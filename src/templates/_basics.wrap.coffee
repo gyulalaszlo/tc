@@ -2,6 +2,7 @@
 docstring = (obj)->
   text = if _.isString( obj ) then obj else obj.docs
   return unless text
+  text = _s.strip( text )
   wrap sep: ' ', no_inline: true, ->
     out "/**"
     inline -> out text
@@ -28,17 +29,16 @@ variable_with_type = (type, name)->
     exported_modifiers = []
     switch
       # CTYPEs are output directly
-      when tname == 'ctype' then out type.raw
+      when tname == 'ctype' then out base_type.raw
       # ALIAS, CLASS and STRUCT types are referenced 
       # by their names
-      when tname in ['alias', 'class', 'struct' ]
-        out type.name
+      when tname in ['alias', 'class', 'struct' ] then out base_type.name
       # EXTENDED types
       when tname == 'extended'
         # add the extensions passed from the base type
         # to our exported extensions
-        child_exports =  resolve_base_type( pack.typelist[base_type.base] )
-        #winston.log "child exports: ", child_exports
+        resolved_base_type =  pack.typelist[base_type.base]
+        child_exports =  resolve_base_type( resolved_base_type )
         exported_modifiers  = exported_modifiers.concat( child_exports )
         for ext in base_type.extensions
           switch ext._type
@@ -46,7 +46,7 @@ variable_with_type = (type, name)->
               exported_modifiers.push "[", ext.size.toString(), ']'
             when 'pointer' then out '*'
             when 'reference' then out '&'
-              
+      # 
       else
         throw new Error("Cannot output 'variable_with_type' type: #{tname}")
     return exported_modifiers
@@ -54,11 +54,12 @@ variable_with_type = (type, name)->
 
   
   # the topmost wrap of the type
-  inline ->
+  inline sep: ' ', ->
     passed_extensions = []
     # the type name wrap
     wrap ->
       passed_extensions = resolve_base_type( type )
+    # the ver name wrap
     wrap ->
       out name
       for e in passed_extensions

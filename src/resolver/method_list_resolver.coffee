@@ -72,6 +72,14 @@ class MethodListResolver
 
       @method_lists.push { _type: "method_list", target: target, methods: methods, access: access }
 
+    # go through each unbound method and compile them into the global
+    # list
+    unbound_methods = []
+    for method in pack.unbound_methods
+      unbound_methods.push @single_definition(method, null, scope)
+
+    @method_lists.push { _type: "method_list", target: null, methods: unbound_methods, access: null }
+    console.log 'unbound_methods:', unbound_methods
 
   single_definition: (method, target, scope)->
     resolver = new SingleDefinitionResolver( @normalized_package, target, scope )

@@ -1,5 +1,7 @@
 package monkeybase
 
+type UPtr = C uintptr_t
+
 type F32 = C float
 type F64 = C double
 
@@ -23,10 +25,15 @@ type Callback32 = struct {
   """
     An Id or a uintptr_t for the callback ptr
   """
-  U64 Id
+  UPtr Id
 
   """
     6 * 4 bytes of data for the callback
   """
   U32[6] data
+  U32[6] data2
+  U32[6] data3
+  U32[6] data4
+  U32[6] data5
 }
+

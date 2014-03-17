@@ -128,7 +128,7 @@ resolve_types = (pack, options)->
   scoped.with_level pack.name, ->
     resolve_typelist(pack, typelist, scoped)
     mlr = new MethodListResolver( pack, normalized_package, scoped)
-    method_lists = mlr.method_lists
+    method_lists.push mlr.method_lists...
 
   normalized_package
 
@@ -204,8 +204,6 @@ find_type_by_name = (typename, current_scope, typelist)->
 find_type_by_name_nocheck = (typename, current_scope, typelist)->
   throw new Error("Tried to lookup undefined type name '#{current_scope.path.join('/')}'") unless typename
   for t,i in typelist
-    if typename == 'F32'
-      console.log "F32:", typename, t.name
     # if the type matches, return the index in the typelist
     return i if typename == t.name
   -1

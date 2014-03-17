@@ -88,10 +88,11 @@ class MemberExpressionResolver
             when field
               result.type = current_type_id = field.type
             else
+              #method_lists = _.where( @parent.method_lists, target: current_type_id )
+              #matching_methods
+              #method = _findWhere( current_type.fields, name: prop_name )
+              #console.log method
               throw new Error("Method lookup not implemented")
-              method_lists = _.where( @parent.method_lists, target: current_type_id )
-              matching_methods
-              method = _findWhere( current_type.fields, name: prop_name )
 
           current_type = @parent.typelist[current_type_id]
           access_chain.push( result )

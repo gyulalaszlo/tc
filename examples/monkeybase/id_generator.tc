@@ -19,12 +19,12 @@ public IdGenerator = {
   """
     empty constructor to start from zero
   """
-  Constructor = fn() {
+  Constructor = ()-> {
       @increment = 1
       this.increment = 1
   }
 
-  Constructor = fn ( Id start, Id increment ) {
+  Constructor = ( Id start, Id increment )-> {
       @id = start
       @increment = increment
   }
@@ -32,7 +32,7 @@ public IdGenerator = {
   """
     Get the id and advance the generator
   """
-  Next = fn() Id {
+  Next = ()-> Id {
     out := @id
     @id += 1
     return out
@@ -43,7 +43,7 @@ public IdGenerator = {
   """
     Reset the counter for the generator
   """
-  Reset = fn( Id start ) {
+  Reset = ( Id start ) -> {
     @id = start
   }
 
