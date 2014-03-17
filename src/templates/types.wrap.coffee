@@ -18,13 +18,18 @@ inline ->
 
     for t in published.where( _type: "struct").value()
       inline ->
+        inline ->
+          basics.docstring( t )
         inline sep: ' ', ->
-          out 'struct', type_name(t)
-        wrap start: "{", end: '};', sep: ' ', ->
-          basics.field_list( t.fields )
+          inline sep: ' ', ->
+            out 'struct', type_name(t)
+          wrap start: "{", end: '};', sep: ' ', ->
+            basics.field_list( t.fields )
 
     for t in published.where( _type: "class").value()
       inline ->
+        inline ->
+          basics.docstring( t )
         inline sep: ' ', ->
           out 'class', type_name(t)
         out ';'

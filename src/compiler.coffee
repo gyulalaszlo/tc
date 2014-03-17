@@ -128,7 +128,7 @@ resolve_types = (pack, options)->
   scoped.with_level pack.name, ->
     resolve_typelist(pack, typelist, scoped)
     mlr = new MethodListResolver( pack, normalized_package, scoped)
-    method_lists.push mlr.method_lists...
+    #method_lists.push mlr.method_lists...
 
   normalized_package
 

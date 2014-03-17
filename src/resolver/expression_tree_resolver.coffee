@@ -88,6 +88,7 @@ class MemberExpressionResolver
             when field
               result.type = current_type_id = field.type
             else
+              console.log current_type, prop_name
               #method_lists = _.where( @parent.method_lists, target: current_type_id )
               #matching_methods
               #method = _findWhere( current_type.fields, name: prop_name )
