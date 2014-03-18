@@ -128,7 +128,7 @@ class MethodArgument extends JsonSerializableWithName
   constructor: (@name)->
   as_json: -> super( type: @type )
   parse: (decl)->
-    @type = new ProxyType( decl.type.name.text )
+    @type = new ProxyType( decl.type.name.text, decl.type )
 
 class Method extends JsonSerializableWithName
   constructor: (@name )->

@@ -30,6 +30,7 @@ build_package_files = (pack, pack_dir, options)->
   tpl = new TemplateContext( pack, pack_dir, options)
   tpl.build_file  "#{_s.underscored pack.name}_types.h", "types"
   tpl.build_file  "#{_s.underscored pack.name}.cc", "package_impl"
+  tpl.build_file  "#{_s.underscored pack.name}.h", "unbound_methods"
   #build_types_file(pack, pack_dir, options)
   build_class_files(pack, pack_dir, options)
   #build_impl_file(pack, pack_dir, options)

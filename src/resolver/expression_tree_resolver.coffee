@@ -4,6 +4,7 @@ class ExpressionTreeResolver
   constructor: (@typelist, @method_list, @target, @scope)->
     @resolvers =
       this: new ThisResolver
+      THIS_ACCESS: new ThisResolver
       binary_expression: new BinaryExpressionResolver
       literal_expression: new LiteralExpressionResolver
       variable_expression: new VariableExpressionResolver
@@ -49,6 +50,7 @@ node_factories =
     { _type: "member", base: base, access_chain: access_chain, type: type_id  }
 
   property_access: (name)-> { _type: "property", name: name  }
+  array_access: (expr)-> { _type: "array", expr: expr  }
 
 class ThisResolver
   resolve: (t)-> { _type: "this", type: @parent.target }
@@ -64,11 +66,11 @@ class MemberExpressionResolver
     access_chain = []
     # When we start with a "this" access, add the @access to
     # the access chain.
-    if base._type == "member"
-      # use the original base
-      base = base.base
-      # and copy over the old access chain
-      access_chain.concat base.access_chain
+    #if base._type == "member"
+      ## use the original base
+      #base = base.base
+      ## and copy over the old access chain
+      #access_chain.concat base.access_chain
 
     # Lookup the base type and store it as the
     # current type
@@ -89,14 +91,32 @@ class MemberExpressionResolver
               result.type = current_type_id = field.type
             else
               console.log current_type, prop_name
-              #method_lists = _.where( @parent.method_lists, target: current_type_id )
-              #matching_methods
-              #method = _findWhere( current_type.fields, name: prop_name )
-              #console.log method
-              throw new Error("Method lookup not implemented")
+              throw new Error("Cannot find property named: #{prop_name} in #{current_type.name}")
 
           current_type = @parent.typelist[current_type_id]
           access_chain.push( result )
+
+        when 'array_access'
+          # check if we are in an array type
+          unless current_type._type == "extended" and _.last( current_type.extensions )._type == 'array'
+            throw new Error("Cannot use array_access on type: #{ current_type.name } = #{ JSON.stringify( current_type ) } ")
+
+          unless current_type.extensions.length == 1
+            throw new Error("Multiple extensions for array lookup not yet implemented")
+          # find the wrapped template 
+          current_type_id = current_type.base
+
+          # find the insides of the array access
+          access_expr = @parent.resolve_tree chain_el.name
+          # TODO: typecheck the result here for integral(?) or
+          # operator[]
+          # create the result
+          result = node_factories.array_access( access_expr )
+          result.type = current_type_id
+          access_chain.push( result )
+          current_type = @parent.typelist[current_type_id]
+        else
+          throw new Error( "Unknown access chain access type: '#{chain_el._type}'" )
 
 
     node_factories.member_access( base, access_chain, current_type_id )

@@ -1,0 +1,37 @@
+package monkeybase
+
+type UnitInstance = struct {
+  Id Id
+  
+  """
+    Since the unit may have its own buffers, its
+    data size may differ from the one in the type
+  """
+  U32 DataSize
+
+  """
+    An id to look up the type of the method
+  """
+  Id TempalateId 
+}
+
+type UnitTemplate = struct {
+  Id id
+}
+
+
+type UnitTemplateList = class {
+  UnitTemplate[256]   unitTemplates
+  U32                 unitTemplateCount
+}
+
+public UnitTemplateList = {
+  Constructor = ()-> {
+    @unitTemplateCount = 0
+  }
+
+  AddTemplate = ( UnitTemplate template_ )-> Id {
+    @unitTemplates[ @unitTemplateCount ] = template_
+    @unitTemplateCount += 1
+  }
+}

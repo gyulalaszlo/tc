@@ -13,13 +13,20 @@ type Parameter = struct {
 }
 
 
+"""
+  Delete an existing parameter from the system.
+"""
 func DeleteParameter = ( Parameter param )-> {
-  return param.id
+  return param.Id
 }
 
-//fn MakeParameter = ( IdGenerator* generator, Id groupId )-> Parameter {
+"""
+  Make a new parameter.
+"""
+func MakeParameter = ( IdGenerator* generator, Id groupId )-> Parameter {
   //return Parameter{
     //Id = generator.Next(),
     //GroupId = groupId,
   //}
-//}
+
+}

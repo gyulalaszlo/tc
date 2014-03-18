@@ -22,16 +22,21 @@ NL_CHARS = [\n\r]
 COMMENT "Comment"
   = "//" (!NL_CHARS . )*
 
+WS_PART_NO_NL
+  = COMMENT
+  / [\t\v\f \u00A0\uFEFF]+
 
 WS_PART
-  = COMMENT
-  / [\t\v\f\n\r \u00A0\uFEFF]+
+  = WS_PART_NO_NL
+  / [\n\r]+
 
 WS "whitespace"
   = WS_PART*
 
+WS_NO_NL = WS_PART_NO_NL*
+
 SE "Statement Terminator ';'"
-  = [;\n\r] WS?
+  = WS_NO_NL [;\n\r] WS?
 
 DocString "Documentation string"
   = '"""' text:(!'"""' ch:. { return ch; })* '"""' { return text.join(''); }

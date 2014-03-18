@@ -14,6 +14,7 @@ make_expression_tree = (t)->
     when "CALL" then new CallExpression( t.base, t.tail )
     when "CALL_MEMBER" then new CallMemberExpression( t.member, t.args, t.tail )
     when "PROPERTY_ACCESS" then new PropertyAccessExpression( t.name )
+    when "ARRAY_ACCESS" then new ArrayAccessExpression( t.name )
     when "CALL_CALLABLE" then new CallCallableExpression( t.args )
     # others
     when "MEMBER" then new MemberExpression( t.base, t.access_chain )
@@ -30,6 +31,7 @@ make_expression_tree = (t)->
 
         else
           winston.error "unknown token type: #{_type}", t
+          winston.error JSON.serialize( t )
           throw new Error("Unknown expression token type: #{_type}")
 
 out_factories =
@@ -39,6 +41,7 @@ out_factories =
       {_type: 'member_expression', base: base, access_chain: access_chain }
 
   property_access: (name)-> { _type: 'property_access', name: name }
+  array_access: (name)-> { _type: 'array_access', name: name }
 
 
 class ThisExpression extends json_serializable.base
@@ -50,6 +53,7 @@ class ThisExpression extends json_serializable.base
 class ThisAccessExpression extends json_serializable.base
   as_json: -> super( @member_expression )
   constructor: ( name )->
+    console.log "ThisAccessExpression", name
     @name = name.text
     @member_expression = out_factories.member_expression(
         out_factories.this(),
@@ -84,6 +88,10 @@ class MemberExpression extends json_serializable.base
 
 class PropertyAccessExpression extends json_serializable.base
   as_json: -> super( out_factories.property_access(@name) )
+  constructor: ( @name )->
+
+class ArrayAccessExpression extends json_serializable.base
+  as_json: -> super( out_factories.array_access( make_expression_tree( @name )) )
   constructor: ( @name )->
 
 class VariableExpression extends json_serializable.base

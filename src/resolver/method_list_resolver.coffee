@@ -3,13 +3,16 @@ _ = require 'underscore'
 ExpressionTreeResolver = require './expression_tree_resolver'
 CAssignStatementResolver = require './c_assign_statement_resolver'
 
+helpers = require './helpers'
 
 resolve_type = (typelist, name)->
-  for t,i in typelist
-    # if the type matches, return the index in the typelist
-    return i if name == t.name
-  # If the type cannot be resolved, we have a problem
-  throw new Error("Cannot resolve type name: '#{typename}'")
+  scope = path:["resolve:#{name}"]
+  return helpers.resolve_type(name, scope, typelist)
+  #for t,i in typelist
+    ## if the type matches, return the index in the typelist
+    #return i if name == t.name
+  ## If the type cannot be resolved, we have a problem
+  #throw new Error("Cannot resolve type name: '#{typename}'")
 
 class ScopeHelper
   constructor: (@parent=null)->
@@ -105,9 +108,12 @@ class SingleDefinitionResolver
     resolver.parent = @ for k,resolver of @resolvers
 
   resolve: (method)->
-    args = ({ name: a.name, type: @resolve_type(a.type.name) } for a in method.args)
+    args = ({ name: a.name, type: @resolve_type(a.type) } for a in method.args)
     returns = ({ type: @resolve_type(r.name) } for r in method.returns)
     method_def = { name: method.name, args: args, returns: returns }
+    #console.log "Method def:", method_def
+    #for a in method.args
+      #console.log "--- arg: ", a
     # add the arguments and returns to the scope
     for arg in args
       @scope.set( arg.name, _type: 'arg', type: arg.type, name: arg.name )
