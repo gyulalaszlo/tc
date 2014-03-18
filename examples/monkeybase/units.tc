@@ -26,10 +26,16 @@ type UnitTemplateList = class {
 }
 
 public UnitTemplateList = {
+  """
+    Create an empty template list
+  """
   Constructor = ()-> {
     @unitTemplateCount = 0
   }
 
+  """
+    Register a new template for creation
+  """
   AddTemplate = ( UnitTemplate template_ )-> Id {
     @unitTemplates[ @unitTemplateCount ] = template_
     @unitTemplateCount += 1
