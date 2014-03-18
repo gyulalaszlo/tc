@@ -53,7 +53,6 @@ class ThisExpression extends json_serializable.base
 class ThisAccessExpression extends json_serializable.base
   as_json: -> super( @member_expression )
   constructor: ( name )->
-    console.log "ThisAccessExpression", name
     @name = name.text
     @member_expression = out_factories.member_expression(
         out_factories.this(),

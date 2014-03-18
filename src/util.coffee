@@ -1,5 +1,5 @@
-fs = require 'fs-extra'
-path = require 'path'
+fs      = require 'fs-extra'
+path    = require 'path'
 winston = require 'winston'
 
 
@@ -11,7 +11,6 @@ empty_directory = (path)->
   return if fs.existsSync( path )
   fs.mkdirsSync path
   winston.info "created directory: #{path}"
-  #say.status "directory", path, "green"
 
 # Helper to write out a file
 write_file = (file, contents)->

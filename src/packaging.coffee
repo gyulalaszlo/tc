@@ -1,6 +1,6 @@
-_ = require 'underscore'
-fs = require 'fs-extra'
-path = require 'path'
+_       = require 'underscore'
+fs      = require 'fs-extra'
+path    = require 'path'
 winston = require 'winston'
 
 

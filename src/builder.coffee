@@ -1,15 +1,8 @@
-_ = require 'underscore'
-_s = require 'underscore.string'
-templates = require './templates'
-
-types_tpl = require './templates/types'
-class_tpl = require './templates/class'
-
-package_impl = require './templates/package_impl'
+_        = require 'underscore'
+_s       = require 'underscore.string'
 
 wrap_tpl = require './wrap_tpl'
-
-util = require './util'
+util     = require './util'
 
 class TemplateContext
   constructor: (@pack, @pack_dir, @options)->
@@ -30,31 +23,13 @@ build_package_files = (pack, pack_dir, options)->
   tpl = new TemplateContext( pack, pack_dir, options)
   tpl.build_file  "#{_s.underscored pack.name}_types.h", "types"
   tpl.build_file  "#{_s.underscored pack.name}.cc", "package_impl"
+  # build the unbound methods file, which would be the bulk of a c module
   tpl.build_file  "#{_s.underscored pack.name}.h", "unbound_methods"
-  #build_types_file(pack, pack_dir, options)
-  build_class_files(pack, pack_dir, options)
-  #build_impl_file(pack, pack_dir, options)
+  # build all the public class interface files
+  # TODO: rewrite with wrap_tpl
+  #build_class_files(pack, pack_dir, options)
 
 
-build_types_file = (pack, pack_dir, options)->
-  #res = templates.run_c_tpl types_tpl, pack
-  #pack_dir.output_file "#{_s.underscored pack.name}_types.h", res._tokens.toString()
-
-  wrap_tpl.load "types", (tpl)->
-    res =  tpl( pack: pack, type_name: util.type_name  )
-    pack_dir.output_file "#{_s.underscored pack.name}_types.h", res.toString()
-    #pack_dir.output_file "#{_s.underscored pack.name}.cc", tpl_res.toString()
-
-  #res._tokens
-
-build_impl_file = (pack, pack_dir, options)->
-  #res = templates.run_c_tpl package_impl, pack
-  #pack_dir.output_file "#{_s.underscored pack.name}.cc", res._tokens.toString()
-
-  wrap_tpl.load "package_impl", (tpl)->
-    tpl_res =  tpl( pack: pack, type_name: util.type_name  )
-    #console.log tpl_res.toString()
-    pack_dir.output_file "#{_s.underscored pack.name}.cc", tpl_res.toString()
 
 
 index_in_typelist = (typelist, name)->
@@ -74,7 +49,6 @@ build_class_files = (pack, pack_dir, options)->
 
     output_file_name = "#{_s.underscored klass.name}.h"
     pack_dir.output_file output_file_name, res._tokens.toString()
-    #console.log res._tokens.toString()
 
 module.exports =
   build_package_files: build_package_files

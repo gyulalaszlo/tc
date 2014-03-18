@@ -8,8 +8,8 @@ os = require 'os'
 winston = require 'winston'
 
 
-GrammarPreprocessor = require './parser/grammar_preprocessor'
-ParserPrecompiler = require './parser/parser_precompiler'
+GrammarPreprocessor = require './grammar_preprocessor'
+ParserPrecompiler = require './parser_precompiler'
 
 # The type exported by make_parser
 class ParserHelper
