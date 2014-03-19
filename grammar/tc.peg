@@ -11,6 +11,14 @@
     }
     return result;
   }
+
+  // check for our PEGjs hack
+  if (typeof peg$currPos == "undefined") { throw new ReferenceError("PEGjs hack for peg$currPos not working!"); }
+
+  // hack to access peg$currPos for storing the positions of Identifier tokens
+  function get_current_pos() {
+    return peg$currPos;
+  }
 }
 
 
@@ -144,12 +152,18 @@ TypeExtension "Array declaration part of types"
 ////////////////////////////////////////////////////////////////////////////////
 
 Identifier "identifier"
-  = text:IdentifierName  ->{{ IDENTIFIER with text }}
+  = text:IdentifierName
+  {
+    return { _type: "IDENTIFIER", _group: "default", text: text.text, start: text.start, len: text.len };
+  }
 
 IdentifierName
-  = start:IdentifierStart cont:IdentifierNameChars* { return [start, cont.join("")].join(""); }
+  = start:IdentifierStart cont:IdentifierNameChars*
+  {
+    return {text:  start.char + cont.join(""), start: start.pos, len: (cont.length + 1)  };
+  }
 
-IdentifierStart = [a-zA-Z_]
+IdentifierStart = c:[a-zA-Z_] { return {char: c, pos: get_current_pos() }; }
 IdentifierNameChars = [a-zA-Z0-9_]
 
 ////////////////////////////////////////////////////////////////////////////////
