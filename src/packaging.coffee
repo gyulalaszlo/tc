@@ -48,7 +48,6 @@ class PackageDir
         winston.error("Error while trying to write '#{file_path}': #{err}", err)
       else
         bench.stop()
-        #winston.info("Written #{file_path} is #{ _s.numberFormat bench.ms(), 2 } ms")
       callback(err) of callback
 
 

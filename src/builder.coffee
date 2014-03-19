@@ -4,6 +4,7 @@ async    = require 'async'
 
 wrap_tpl = require './wrap_tpl'
 util     = require './util'
+Bench = require './bench'
 
 class TemplateContext
   constructor: (@pack, @pack_dir, @options)->
@@ -15,27 +16,54 @@ class TemplateContext
     }
 
   build_file: (output_file, template_name, data, callback_)->
-    callback = callback_ or data
-    wrap_tpl.load template_name, (tpl)=>
-      tpl_data = _.extend( {}, @context, data )
-      res =  tpl( tpl_data  )
+    build_tpl template_name, data, (err, res)->
+      return callback(err, res) if err
       @pack_dir.output_file output_file, res.toString(), (err)->
         callback(err)
 
 
+    #callback = callback_ or data
+    #wrap_tpl.load template_name, (tpl)=>
+      #tpl_data = _.extend( {}, @context, data )
+      #res =  tpl( tpl_data  )
+      #@pack_dir.output_file output_file, res.toString(), (err)->
+        #callback(err)
+
+  build_tpl: (template_name, data, callback_)->
+    callback = callback_ or data
+    wrap_tpl.load template_name, (tpl)=>
+      tpl_data = _.extend( {}, @context, data )
+      res =  tpl( tpl_data  )
+      callback( null, res )
+      #@pack_dir.output_file output_file, res.toString(), (err)->
+        #callback(err)
+
+
 build_package_files = (pack, pack_dir, options, callback)->
   FILE_LIST = [
-    { name: "#{_s.underscored pack.name}_types.h" , template: "types" }
     { name: "#{_s.underscored pack.name}.cc"      , template: "package_impl" }
     { name: "#{_s.underscored pack.name}.h"       , template: "unbound_methods" }
+
+    { name: "#{_s.underscored pack.name}_types.h" , template: "types" }
   ]
   templater_fn = (what, callback)->
     tpl = new TemplateContext( pack, pack_dir, options)
-    tpl.build_file what.name, what.template, (err)->
-      callback(err)
+    tpl.build_tpl what.template, (err, res)->
+      callback(err, _.extend( result: res, what )  )
 
-  async.each FILE_LIST, templater_fn, (err)->
-    callback(err, _.pluck( FILE_LIST, 'name' ))
+  bench = new Bench("Generate C++ sources for package '#{pack.name}'")
+  async.map FILE_LIST, templater_fn, (err, results)->
+    return callback(err) if err
+    bench.split("generation done...")
+    # The write me out function
+    write_fn = (what, callback)->
+      pack_dir.output_file what.name, what.result, (err)->
+        callback(err)
+
+    # access the file system in a single queue
+    async.each FILE_LIST, write_fn, (err)->
+      bench.stop()
+      callback(err, _.pluck( FILE_LIST, 'name' ))
 
   # build all the public class interface files
   # TODO: rewrite with wrap_tpl

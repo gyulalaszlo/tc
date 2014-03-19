@@ -1,17 +1,5 @@
 _ = require 'underscore'
 
-
-# replace a proxy type in the typelist
-replace_in_typelist = (typelist, name, with_what)->
-  for t,i in typelist
-    # if the type matches, return the index in the typelist
-    continue unless name == t.name
-    unless t._type == 'proxy'
-      throw new Error("Only proxy types can be replaced in the typelist, #{JSON.stringify(t)} isnt a proxy")
-    _.extend typelist[i], with_what
-    return
-  throw new Error("Cannot find proxy type '#{name}' in typelist: [#{(t.name for t in typelist).join(', ')}]")
-
 # Get a types index in a typelist
 resolve_type = (typename, current_scope, typelist)->
   # generate the full type name
@@ -60,7 +48,6 @@ type_name_with_extensions = (name, extensions)->
 
 module.exports =
   resolve_type: resolve_type
-  replace_in_typelist: replace_in_typelist
   find_type_by_name: find_type_by_name
   find_type_by_name_nocheck: find_type_by_name_nocheck
   type_name_with_extensions: type_name_with_extensions

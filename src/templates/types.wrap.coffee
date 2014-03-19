@@ -31,7 +31,6 @@ inline ->
 
     #line "/* --- Interfaces --- */"
     for t in published.where( _type: "interface").value()
-      log t
       inline ->
         inline ->
           basics.docstring( t )

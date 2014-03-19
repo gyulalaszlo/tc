@@ -1,15 +1,15 @@
 package foundation
 
 type AllocatorStats = class {
-  U64 Allocated
-  U64 Deallocated
+  Allocated: U64
+  Deallocated: U64
 }
 
 
 public AllocatorStats = {
 
-  Active = fn() U64 {
-    return @Allocated - @Deallocated
+  Active = ()-> U64 {
+    //return @Allocated - @Deallocated
   }
 }
 

@@ -8,11 +8,6 @@ helpers = require './helpers'
 resolve_type = (typelist, name)->
   scope = path:["resolve:#{name}"]
   return helpers.resolve_type(name, scope, typelist)
-  #for t,i in typelist
-    ## if the type matches, return the index in the typelist
-    #return i if name == t.name
-  ## If the type cannot be resolved, we have a problem
-  #throw new Error("Cannot resolve type name: '#{typename}'")
 
 class ScopeHelper
   constructor: (@parent=null)->

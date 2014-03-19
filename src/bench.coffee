@@ -1,4 +1,4 @@
-_s             = require 'underscore.string'
+_s            = require 'underscore.string'
 winston       = require 'winston'
 
 class Bench
@@ -12,6 +12,13 @@ class Bench
     if @text
       winston.info "#{ if @hide_start then '' else '<-- '}#{@text} (in #{ _s.numberFormat( @ms(), 2)} ms)"
     @diff
+
+  split: (msg)->
+    @diff = process.hrtime(@start)
+    if @text
+      winston.info "#{ if @hide_start then '' else ' -- '}#{@text} : #{msg} (in #{ _s.numberFormat( @ms(), 2)} ms)"
+    @diff
+
 
   ms: ->
     @diff[0] * 1e3 + (@diff[1] * 1e-6)
