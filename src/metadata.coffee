@@ -50,6 +50,20 @@ class TypeBase extends JsonSerializableWithName
   set_docs: (docs)-> @docs = docs
   as_json: (data...)-> super({_resolved: true, docs: @docs}, data...)
 
+class TemplatedType extends JsonSerializableWithName
+  constructor: (tpl)->
+    @is_template = false
+    @args = []
+    return unless tpl
+    @is_template = true
+    console.log "args:", tpl
+    for arg in tpl.args.list
+      m_arg = new MethodArgument( arg.decl.name.text )
+      m_arg.parse( arg.decl )
+      @args.push m_arg
+
+  as_json: (data...)-> super(args: @args)
+
 # A type class for yet unresolved types
 class ProxyType extends TypeBase
   constructor: (@name, decl)->
@@ -78,9 +92,14 @@ class StructuredData extends TypeBase
       f = new Field(field)
       @fields.push f
 
+  set_template: (tpl)->
+    return unless tpl
+    @template = new TemplatedType( tpl )
+
+
   # Hook the field parsing
-  parse: (as)-> super(as); @make_fields( as.fields )
-  as_json: (data)-> super( fields: @fields, data )
+  parse: (as)-> super(as); @make_fields( as.fields ); @set_template(as.template)
+  as_json: (data)-> super( template: @template, fields: @fields, data )
 
 class Class extends StructuredData
   constructor: (@name)->

@@ -79,7 +79,11 @@ TypeDefinition_ "Type Definition"
 ////////////////////////////////////////////////////////////////////////////////
 
 ClassDefinition_
-  = "class" WS fields:StructFieldList_ ->{{ CLASS with fields }}
+  = "class" WS template:TemplatedStructure? fields:StructFieldList_
+    ->{{ CLASS with fields, template }}
+
+TemplatedStructure "Templated structured data (class or struct or interface)"
+  = "<" WS  args:FunctionDeclarationArgumentList  ">" WS ->{{ TEMPLATE with args }}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -98,7 +102,7 @@ InterfaceMethodDeclaration "Interface Method Declaration"
 
 ////////////////////////////////////////////////////////////////////////////////
 StructDefinition_
-  = "struct" WS fields:StructFieldList_ ->{{ STRUCT with fields }}
+  = "struct" WS template:TemplatedStructure ? fields:StructFieldList_ ->{{ STRUCT with fields, template }}
 
 
 StructFieldList_

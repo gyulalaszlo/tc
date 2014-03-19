@@ -88,6 +88,25 @@ resolve_types = (pack, options)->
   normalized_package
 
 
+class Typelist
+  constructor: (@typelist)->
+    if _.isArray( @typelist )
+      @arr = @typelist
+      @parent = null
+    else
+      @parent = @typelist
+      @arr = []
+    @locals = []
+
+  lookup: (name)->
+    for t, i in @arr
+      return {id:i, type:t} if name == t.name
+    return @parent.lookup(name) if @parent
+    return null
+
+  # add a local type to the typelist
+  add: (t)->
+
 
 # resolve the root typelists entries in the package
 resolve_typelist = (pack, typelist, scoped)->
@@ -96,6 +115,7 @@ resolve_typelist = (pack, typelist, scoped)->
     typelist.push { _type: "proxy", name: name, public: util.is_published(name) }
 
 
+  typelist_wrapper = new Typelist( typelist )
   # go through each type and fill in the missing declrations
   # since the proxies go by name, we can replace by name
   for name, t of pack.types
@@ -113,6 +133,12 @@ resolve_typelist = (pack, typelist, scoped)->
 
         # Classes and structs need their fields resolved
         when t._type in ['class', 'struct']
+          #local_typelist = new Typelist( typelist_wrapper )
+          # the templated types need to be created first
+          if t.template
+            for t_arg in t.template.args
+              console.log t_arg
+          # then add all the fields
           fields = []
           for field in t.fields
             fields.push { name: field.name, type: resolve_type( field.type, scoped, typelist ), docs: field.docs }
