@@ -77,7 +77,13 @@ resolve_types = (pack, options)->
   scoped = new ScopeList
   scoped.with_level pack.name, ->
     resolve_typelist(pack, typelist, scoped)
-    new MethodListResolver( pack, normalized_package, scoped)
+    try
+      new MethodListResolver( pack, normalized_package, scoped)
+    catch err
+      winston.error "Error while resolution: "
+      winston.error err.stack, err
+
+      normalized_package = {name: pack.name, typelist: [], method_lists: [], expressions: []}
 
   normalized_package
 
@@ -111,6 +117,21 @@ resolve_typelist = (pack, typelist, scoped)->
           for field in t.fields
             fields.push { name: field.name, type: resolve_type( field.type, scoped, typelist ), docs: field.docs }
           replace_in_typelist typelist, name, { _type: t._type, name: name, fields: fields, docs: t.docs }
+
+        # Classes and structs need their fields resolved
+        when t._type == 'interface'
+          methods = []
+          for meth in t.methods
+            console.log meth
+            methods.push
+              is_virtual: true
+              is_abstract: true
+              name: meth.name
+              returns: ( {type:resolve_type( r.name, scoped, typelist)} for r in meth.returns )
+              args: ( {type:resolve_type( a.type, scoped, typelist), name: a.name} for a in meth.args )
+              docs: meth.docs
+            #methods.push { name: meth.name, type: resolve_type( field.type, scoped, typelist ), docs: field.docs }
+          replace_in_typelist typelist, name, { _type: t._type, name: name, methods: methods, docs: t.docs }
 
 
 module.exports =

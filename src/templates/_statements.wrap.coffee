@@ -126,6 +126,8 @@ build_method = (pack, statements, method, target=null, opts={})->
   inline sep: ' ', ->
     inline ->
       inline sep: ' ', ->
+        if method.is_virtual
+          out 'virtual'
         out if ret.length > 0 then ret else 'void'
         inline sep: '::', ->
           out name...
@@ -137,12 +139,18 @@ build_method = (pack, statements, method, target=null, opts={})->
                 inline sep: ' ', ->
                   variable_with_type arg.type, arg.name
 
-    if opts.body
-      wrap sep: ' ', ->
-        inline sep: ' ', start: '{', end: '}', ->
-          statements.list( method.body )
+    if method.is_abstract
+      out '= 0;'
     else
-      out ';'
+      if opts.body
+        wrap sep: ' ', ->
+          inline sep: ' ', start: '{', end: '}', ->
+            statements.list( method.body )
+      else
+        out ';'
+
+
+
 
 exports 'statements',
   #field_list: field_list

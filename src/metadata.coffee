@@ -92,6 +92,15 @@ class Struct extends StructuredData
   parse: (as)-> super(as)
   as_json: -> super( _type: 'struct')
 
+class Interface extends TypeBase
+  constructor: (@name)->
+    @methods = new MethodList( null, null )
+  as_json: -> super( _type: 'interface', methods: @methods.methods )
+  parse: (as)->
+    super(as)
+    @methods.parse as.method_list.methods
+    #console.log as.method_list
+
 
 
 
@@ -151,9 +160,10 @@ class Method extends JsonSerializableWithName
       #m_arg.parse( arg.decl )
       @returns.push m_arg
 
-    for statement in decl.func.body.statements
-      s = new Statement( statement )
-      @body.push s
+    if decl.func.body
+      for statement in decl.func.body.statements
+        s = new Statement( statement )
+        @body.push s
 
 
 # A simple list of methods
@@ -201,7 +211,7 @@ class Statement extends JsonSerializable
           #when _t in ["EXPR"] then @_type = "expression"; @tree = expression_tree.make(tree.expr)
 
 
-type_base_map = CLASS: Class, STRUCT: Struct, ALIAS: Alias, CTYPE: CType
+type_base_map = CLASS: Class, STRUCT: Struct, ALIAS: Alias, CTYPE: CType, INTERFACE: Interface
 
 # Get a units package name
 package_name_for_unit = (unit)->

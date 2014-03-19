@@ -74,11 +74,26 @@ TypeDefinition_ "Type Definition"
   / a:AliasDefinition_ { return a; }
   / c:CTypeDefinition_ { return c; }
   / d:ClassDefinition_ { return d; }
+  / i:InterfaceDefinition_ { return i; }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 ClassDefinition_
   = "class" WS fields:StructFieldList_ ->{{ CLASS with fields }}
+
+////////////////////////////////////////////////////////////////////////////////
+
+InterfaceDefinition_
+  = "interface" WS method_list:InterfaceMethodList_ ->{{ INTERFACE with method_list }}
+
+InterfaceMethodList_
+  = "{" WS methods:InterfaceMethodDeclarationWithDocstring* "}" ->{{ METHODS with methods }}
+
+InterfaceMethodDeclarationWithDocstring
+  = doc:(d:DocString WS { return d; })? r:InterfaceMethodDeclaration { r.docs = doc; return r; }
+
+InterfaceMethodDeclaration "Interface Method Declaration"
+  = name:Identifier WS "=" WS func:FunctionDeclarationWithoutBody_ WS ->{{ METHOD with name, func }}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +111,8 @@ FieldDeclaration "Struct Field Declaration"
   = decl:VariableDeclaration_ SE { return decl; }
 
 VariableDeclaration_ "Variable Declaration"
-  = type:TypeName_ WS name:Identifier ->{{ VAR with type, name }}
+  = name:Identifier WS ':' WS  type:TypeName_ ->{{ VAR with type, name }}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,6 +174,10 @@ MethodAccessor "Method acess controll"
 FunctionDeclaration "Function declaration"
   = args:FunctionArgList "->" WS returns:FunctionReturnType body:FunctionBody
     ->{{ FUNC with args, body, returns }}
+
+FunctionDeclarationWithoutBody_ "Function declaration"
+  = args:FunctionArgList "->" WS returns:FunctionReturnType
+    ->{{ FUNC with args, returns }}
 
 FunctionArgList "Type list for function parameters/return values"
   = "(" WS args:FunctionDeclarationArgumentList ")" WS { return args; }

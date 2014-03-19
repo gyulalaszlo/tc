@@ -4,8 +4,8 @@ package monkeybase
   A simple Generator for sequential Id genration
 """
 type IdGenerator = class {
-  Id id;
-  Id increment;
+  id:Id;
+  increment:Id;
 }
 
 // these declarations should be accessible before this line
@@ -24,7 +24,7 @@ public IdGenerator = {
       this.increment = 1
   }
 
-  Constructor = ( Id start, Id increment )-> {
+  Constructor = ( start: Id, increment: Id )-> {
       @id = start
       @increment = increment
   }
@@ -43,7 +43,7 @@ public IdGenerator = {
   """
     Reset the counter for the generator
   """
-  Reset = ( Id start ) -> {
+  Reset = ( start:Id ) -> {
     @id = start
   }
 

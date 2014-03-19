@@ -32,7 +32,7 @@ variable_with_type = (type, name)->
       when tname == 'ctype' then out base_type.raw
       # ALIAS, CLASS and STRUCT types are referenced 
       # by their names
-      when tname in ['alias', 'class', 'struct' ] then out base_type.name
+      when tname in ['alias', 'class', 'struct', 'interface' ] then out base_type.name
       # EXTENDED types
       when tname == 'extended'
         # add the extensions passed from the base type

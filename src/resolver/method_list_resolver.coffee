@@ -110,7 +110,7 @@ class SingleDefinitionResolver
   resolve: (method)->
     args = ({ name: a.name, type: @resolve_type(a.type) } for a in method.args)
     returns = ({ type: @resolve_type(r.name) } for r in method.returns)
-    method_def = { name: method.name, args: args, returns: returns }
+    method_def = { name: method.name, args: args, returns: returns, is_virtual: false, is_abstract: false }
     #console.log "Method def:", method_def
     #for a in method.args
       #console.log "--- arg: ", a

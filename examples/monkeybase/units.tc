@@ -1,28 +1,37 @@
 package monkeybase
 
 type UnitInstance = struct {
-  Id Id
-  
+  Id: Id
+
   """
     Since the unit may have its own buffers, its
     data size may differ from the one in the type
   """
-  U32 DataSize
+  DataSize: U32
 
   """
-    An id to look up the type of the method
+    An id to look up the type of the method.
   """
-  Id TempalateId 
+  // note: the declaration with a space at the end before a
+  // newline must not throw an exceptinon
+  TempalateId: Id
 }
 
-type UnitTemplate = struct {
-  Id id
+"""
+  The template metadata for a unit template
+"""
+type UnitTemplate = interface {
+  DataSize = ( )-> U32
+  Initialize = (data:void*)->
 }
 
 
+"""
+  A list to register UnitTemplates into
+"""
 type UnitTemplateList = class {
-  UnitTemplate[256]   unitTemplates
-  U32                 unitTemplateCount
+  unitTemplates     : UnitTemplate[256]
+  unitTemplateCount : U32
 }
 
 public UnitTemplateList = {
@@ -36,8 +45,8 @@ public UnitTemplateList = {
   """
     Register a new template for creation
   """
-  AddTemplate = ( UnitTemplate template_ )-> Id {
-    @unitTemplates[ @unitTemplateCount ] = template_
+  AddTemplate = ( template:UnitTemplate* )-> Id {
+    @unitTemplates[ @unitTemplateCount ] = template
     @unitTemplateCount += 1
   }
 }

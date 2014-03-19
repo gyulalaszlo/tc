@@ -2,6 +2,8 @@ package monkeybase
 
 type UPtr = C uintptr_t
 
+type void = C void
+
 type F32 = C float
 type F64 = C double
 
@@ -12,8 +14,8 @@ type U32 = C uint32_t
 type I32 = C int32_t
 
 type Range = struct {
-  U32 start
-  U32 end
+  start : U32
+  end   : U32
 }
 
 
@@ -25,15 +27,15 @@ type Callback32 = struct {
   """
     An Id or a uintptr_t for the callback ptr
   """
-  UPtr Id
+  Id: UPtr
 
   """
     6 * 4 bytes of data for the callback
   """
-  U32[6] data
-  U32[6] data2
-  U32[6] data3
-  U32[6] data4
-  U32[6] data5
+  data: U32[6]
 }
 
+//type List = struct<T: typename> {
+  //data: T*
+  //length: UPtr
+//}

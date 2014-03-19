@@ -2,28 +2,27 @@ package monkeybase
 
 type Parameter = struct {
   """ The id of this parameter """
-  U32 Id
+  Id: U32
 
   """ The group this parameter belongs to.  """
-  U32 GroupId
+  GroupId: U32
 
   """ The normalized value of the parameter.  """
-  F64 Value
-
+  Value: F32
 }
 
 
 """
   Delete an existing parameter from the system.
 """
-func DeleteParameter = ( Parameter param )-> {
+func DeleteParameter = ( param:Parameter )-> {
   return param.Id
 }
 
 """
   Make a new parameter.
 """
-func MakeParameter = ( IdGenerator* generator, Id groupId )-> Parameter {
+func MakeParameter = ( generator:IdGenerator*, groupId:Id )-> Parameter {
   //return Parameter{
     //Id = generator.Next(),
     //GroupId = groupId,
