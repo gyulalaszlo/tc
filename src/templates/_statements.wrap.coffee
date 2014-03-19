@@ -135,9 +135,7 @@ build_method = (pack, statements, method, target=null, opts={})->
             inline sep: ', ', ->
               for arg in args
                 inline sep: ' ', ->
-                  #log arg, method
                   variable_with_type arg.type, arg.name
-                  #out arg.type, arg.name
 
     if opts.body
       wrap sep: ' ', ->

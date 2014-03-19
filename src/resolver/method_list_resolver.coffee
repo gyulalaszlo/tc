@@ -81,8 +81,8 @@ class MethodListResolver
     for method in pack.unbound_methods
       unbound_methods.push @single_definition(method, null, scope)
 
+    # add to the special unbound methods list
     @method_lists.push { _type: "method_list", target: null, methods: unbound_methods, access: null }
-    console.log 'unbound_methods:', unbound_methods
 
   single_definition: (method, target, scope)->
     resolver = new SingleDefinitionResolver( @normalized_package, target, scope )

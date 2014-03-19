@@ -90,7 +90,6 @@ class MemberExpressionResolver
             when field
               result.type = current_type_id = field.type
             else
-              console.log current_type, prop_name
               throw new Error("Cannot find property named: #{prop_name} in #{current_type.name}")
 
           current_type = @parent.typelist[current_type_id]
