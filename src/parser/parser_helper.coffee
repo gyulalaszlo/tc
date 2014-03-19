@@ -6,6 +6,7 @@ _ = require 'underscore'
 os = require 'os'
 
 winston = require 'winston'
+Bench = require '../bench'
 
 
 GrammarPreprocessor = require './grammar_preprocessor'
@@ -108,9 +109,15 @@ report_error = (filename, err)->
 
 _.extend exports,
   # Create a parser with a helper
-  with_parser: (path, callback)->
-    rebuild_parser path, (err, parser)->
-      throw new Error("Cannot build parser") if err
+  with_parser: (path, options, callback)->
+    if options.rebuildGrammar
+      bench = new Bench("Rebuilt PEGjs parser", true)
+      rebuild_parser path, (err, parser)->
+        throw new Error("Cannot build parser") if err
+        bench.stop()
+        callback( new ParserHelper(parser) )
+    else
+      parser = require '../../lib/parser'
       callback( new ParserHelper(parser) )
 
 

@@ -12,7 +12,7 @@ GRAMMAR_FILE_PATH =  "#{__dirname}/../../grammar/tc.peg"
 # The first step in the compilation is parsing the package sources
 parse_packages = (root, package_list, options, callback)->
   # load the parser
-  parser_helper.with_parser GRAMMAR_FILE_PATH, (parser)->
+  parser_helper.with_parser GRAMMAR_FILE_PATH, options, (parser)->
     parsed_packages = []
     # packages can be parsed paralell
     parse_package_partial = _.partial( parse_package, parser, root, options )
