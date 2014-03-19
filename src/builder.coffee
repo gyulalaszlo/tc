@@ -18,26 +18,16 @@ class TemplateContext
   build_file: (output_file, template_name, data, callback_)->
     build_tpl template_name, data, (err, res)->
       return callback(err, res) if err
-      @pack_dir.output_file output_file, res.toString(), (err)->
+      @pack_dir.output_file output_file, res, (err)->
         callback(err)
 
-
-    #callback = callback_ or data
-    #wrap_tpl.load template_name, (tpl)=>
-      #tpl_data = _.extend( {}, @context, data )
-      #res =  tpl( tpl_data  )
-      #@pack_dir.output_file output_file, res.toString(), (err)->
-        #callback(err)
 
   build_tpl: (template_name, data, callback_)->
     callback = callback_ or data
     wrap_tpl.load template_name, (tpl)=>
       tpl_data = _.extend( {}, @context, data )
       res =  tpl( tpl_data  )
-      callback( null, res )
-      #@pack_dir.output_file output_file, res.toString(), (err)->
-        #callback(err)
-
+      callback( null, res.toString() )
 
 build_package_files = (pack, pack_dir, options, callback)->
   FILE_LIST = [
@@ -46,22 +36,22 @@ build_package_files = (pack, pack_dir, options, callback)->
 
     { name: "#{_s.underscored pack.name}_types.h" , template: "types" }
   ]
+  # The function to run each template in its own context
   templater_fn = (what, callback)->
     tpl = new TemplateContext( pack, pack_dir, options)
     tpl.build_tpl what.template, (err, res)->
-      callback(err, _.extend( result: res, what )  )
+      callback(err, _.extend( result: res, what ) )
+
+  # The write me out function
+  write_fn = (what, callback)->
+    pack_dir.output_file what.name, what.result, (err)->
+      callback(err)
 
   bench = new Bench("Generate C++ sources for package '#{pack.name}'")
   async.map FILE_LIST, templater_fn, (err, results)->
     return callback(err) if err
     bench.split("generation done...")
-    # The write me out function
-    write_fn = (what, callback)->
-      pack_dir.output_file what.name, what.result, (err)->
-        callback(err)
-
-    # access the file system in a single queue
-    async.each FILE_LIST, write_fn, (err)->
+    async.each results, write_fn, (err)->
       bench.stop()
       callback(err, _.pluck( FILE_LIST, 'name' ))
 
