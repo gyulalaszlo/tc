@@ -1,5 +1,6 @@
 _        = require 'underscore'
 _s       = require 'underscore.string'
+async    = require 'async'
 
 wrap_tpl = require './wrap_tpl'
 util     = require './util'
@@ -13,18 +14,29 @@ class TemplateContext
       not_published: _.chain( @pack.typelist ).where({ public: false })
     }
 
-  build_file: (output_file, template_name, data={})->
+  build_file: (output_file, template_name, data, callback_)->
+    callback = callback_ or data
     wrap_tpl.load template_name, (tpl)=>
       tpl_data = _.extend( {}, @context, data )
       res =  tpl( tpl_data  )
-      @pack_dir.output_file output_file, res.toString()
+      @pack_dir.output_file output_file, res.toString(), (err)->
+        callback(err)
 
-build_package_files = (pack, pack_dir, options)->
-  tpl = new TemplateContext( pack, pack_dir, options)
-  tpl.build_file  "#{_s.underscored pack.name}_types.h", "types"
-  tpl.build_file  "#{_s.underscored pack.name}.cc", "package_impl"
-  # build the unbound methods file, which would be the bulk of a c module
-  tpl.build_file  "#{_s.underscored pack.name}.h", "unbound_methods"
+
+build_package_files = (pack, pack_dir, options, callback)->
+  FILE_LIST = [
+    { name: "#{_s.underscored pack.name}_types.h" , template: "types" }
+    { name: "#{_s.underscored pack.name}.cc"      , template: "package_impl" }
+    { name: "#{_s.underscored pack.name}.h"       , template: "unbound_methods" }
+  ]
+  templater_fn = (what, callback)->
+    tpl = new TemplateContext( pack, pack_dir, options)
+    tpl.build_file what.name, what.template, (err)->
+      callback(err)
+
+  async.each FILE_LIST, templater_fn, (err)->
+    callback(err, _.pluck( FILE_LIST, 'name' ))
+
   # build all the public class interface files
   # TODO: rewrite with wrap_tpl
   #build_class_files(pack, pack_dir, options)

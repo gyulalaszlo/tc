@@ -23,8 +23,15 @@ program
 
 var pkgs = program.args;
 if (!pkgs.length) {
-  console.error('packages required');
+  console.error('packages argument required required');
   process.exit(1);
 }
 
-compiler.compile_packages(pkgs, program);
+compiler.compile_packages(pkgs, program, function( err, result){
+  winston.info( "Result: ", result )
+  if(err){
+    winston.error("Got error: ",  err );
+    winston.error( err.stack );
+    process.exit(1);
+  }
+});

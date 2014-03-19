@@ -35,13 +35,13 @@ type Callback32 = struct {
   data: U32[6]
 }
 
-type List = struct<T: typename> {
-  Data: T*
-  Length: UPtr
-}
+//type List = struct<T: typename> {
+  //Data: T*
+  //Length: UPtr
+//}
 
-type AllocatedList = struct<T: typename, AllocatorT: typename> {
-  Allocator: AllocatorT*
-  Data: T*
-  Length: UPtr
-}
+//type AllocatedList = struct<T: typename, AllocatorT: typename> {
+  //Allocator: AllocatorT*
+  //Data: T*
+  //Length: UPtr
+//}

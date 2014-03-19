@@ -1,7 +1,10 @@
 _       = require 'underscore'
+_s      = require 'underscore.string'
 fs      = require 'fs-extra'
 path    = require 'path'
 winston = require 'winston'
+
+Bench   = require './bench'
 
 
 is_tc_file = (filename)->
@@ -38,17 +41,20 @@ class PackageDir
     callback = callback ? (err)->
     # wirte ut via fs-extra
     file_path = path.join( @output_dir(), filename )
+    #winston.info("Starting to write #{file_path}")
+    bench = new Bench "write file '#{file_path}'", true
     fs.outputFile file_path, contents, (err)->
       if err
         winston.error("Error while trying to write '#{file_path}': #{err}", err)
       else
-        winston.info("Written #{file_path}")
-      callback(err)
+        bench.stop()
+        #winston.info("Written #{file_path} is #{ _s.numberFormat bench.ms(), 2 } ms")
+      callback(err) of callback
 
 
   # Save something to the output dir as JSON
-  output_json: (filename, obj)->
-    @output_file( filename, JSON.stringify(obj, null, 2) )
+  output_json: (filename, obj, args...)->
+    @output_file( filename, JSON.stringify(obj, null, 2), args... )
 
   # Does the package directory exist?
   must_exist: (callback)->
