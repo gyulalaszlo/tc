@@ -18,7 +18,7 @@ make_expression_tree = (t)->
     when "CALL_CALLABLE" then new CallCallableExpression( t.args )
     # others
     when "MEMBER" then new MemberExpression( t.base, t.access_chain )
-    when "VARIABLE" then new VariableExpression(  t.name.text )
+    when "VARIABLE" then new VariableExpression(  t.name )
     when "LITERAL" then new LiteralExpression( t.value.type, t.value.value )
 
     else
@@ -53,7 +53,7 @@ class ThisExpression extends json_serializable.base
 class ThisAccessExpression extends json_serializable.base
   as_json: -> super( @member_expression )
   constructor: ( name )->
-    @name = name.text
+    @name = name
     @member_expression = out_factories.member_expression(
         out_factories.this(),
         [out_factories.property_access( @name )]

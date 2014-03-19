@@ -25,7 +25,7 @@ public IdGenerator = {
   }
 
   Constructor = ( start: Id, increment: Id )-> {
-      @id = start
+      @id = starte
       @increment = increment
   }
 

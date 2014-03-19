@@ -27,6 +27,8 @@ compile_packages = (package_list, options, callback)->
     package_name_list = _.pluck(parsed_packages, "name")
     winston.debug "Parsed #{parsed_packages.length} package(s): #{package_name_list.join(', ') }"
 
+    # drop out at this point if only the parse tree is necessary
+    return callback( null, package_name_list ) if options.saveParseTree
     compile_parsed_package_fn = _.partial( compile_parsed_package, root, options )
 
     # resolve and build each package paralell

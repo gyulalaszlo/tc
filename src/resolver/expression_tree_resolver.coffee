@@ -1,4 +1,5 @@
 _ = require 'underscore'
+tokens = require '../tokens'
 
 class ExpressionTreeResolver
   constructor: (@typelist, @method_list, @target, @scope)->
@@ -64,14 +65,6 @@ class MemberExpressionResolver
   resolve: (t)->
     base = @parent.resolve_tree(t.base)
     access_chain = []
-    # When we start with a "this" access, add the @access to
-    # the access chain.
-    #if base._type == "member"
-      ## use the original base
-      #base = base.base
-      ## and copy over the old access chain
-      #access_chain.concat base.access_chain
-
     # Lookup the base type and store it as the
     # current type
     current_type_id = base.type
@@ -83,14 +76,14 @@ class MemberExpressionResolver
       switch chain_el._type
         when "property_access"
           prop_name = chain_el.name
-          result = node_factories.property_access( chain_el.name )
+          result = node_factories.property_access( prop_name )
           # check if the type has any such properties
-          field = _.findWhere( current_type.fields, name: prop_name )
+          field = _.findWhere( current_type.fields, name: prop_name.text )
           switch
             when field
               result.type = current_type_id = field.type
             else
-              throw new Error("Cannot find property named: #{prop_name} in #{current_type.name}")
+              throw new tokens.TokenError(prop_name, "Cannot find property in #{current_type.name}")
 
           current_type = @parent.typelist[current_type_id]
           access_chain.push( result )
@@ -127,9 +120,10 @@ class MemberExpressionResolver
 class VariableExpressionResolver
   resolve: (t)->
     var_name = t.name
-    from_scope = @parent.scope.get var_name
+    from_scope = @parent.scope.get var_name.text
     unless from_scope
-      throw new Error("Cannot resolve '#{var_name}'")
+      console.log "t:", t
+      throw new tokens.TokenError(t.name, "Cannot resolve variable name")
 
     { _type: "variable", name: t.name, type: from_scope.type  }
 

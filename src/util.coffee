@@ -6,7 +6,6 @@ winston  = require 'winston'
 capitalA = "A".charCodeAt(0)
 capitalZ = "Z".charCodeAt(0)
 
-
 # A wrapper for mkdir_p like thor's empty_directory
 empty_directory = (path)->
   return if fs.existsSync( path )

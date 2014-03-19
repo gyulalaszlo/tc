@@ -48,7 +48,7 @@ class PackageDir
         winston.error("Error while trying to write '#{file_path}': #{err}", err)
       else
         bench.stop()
-      callback(err) of callback
+      callback(err) if callback
 
 
   # Save something to the output dir as JSON

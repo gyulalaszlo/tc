@@ -44,9 +44,12 @@ parse_package_file = (parser, options, file, callback)->
   bench = new Bench( "parsed source: #{file.file} -> '#{file.path}'", true )
   parser.parse_file file.path, (res)->
     bench.stop()
-    file.dir.output_json( "#{path.basename(file.path)}.parsed", res ) if options.saveParseTree
+    unless options.saveParseTree
+      callback( null, res )
+    else
+      file.dir.output_json "#{path.basename(file.path)}.parsed", res, (err)->
+        callback( null, res )
     #winston.debug "parsed source: #{file.file} -> '#{file.path}'"
-    callback( null, res )
 
 
 _.extend exports,

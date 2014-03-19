@@ -17,7 +17,7 @@
 
   // hack to access peg$currPos for storing the positions of Identifier tokens
   function get_current_pos() {
-    return peg$currPos;
+    return { line: line(), column: column(), offset: offset()}
   }
 }
 
