@@ -4,7 +4,7 @@ async         = require 'async'
 path          = require 'path'
 
 parser_helper = require '../parser/parser_helper'
-tc_packages   = require '../metadata'
+tc_packages   = require './structure_tree'
 Bench = require '../bench'
 
 GRAMMAR_FILE_PATH =  "#{__dirname}/../../grammar/tc.peg"

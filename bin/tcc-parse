@@ -4,6 +4,9 @@ var winston = require('winston');
 var program = require('commander');
 var coffee = require('coffee-script/register');
 var compiler = require('../src/compiler');
+var Bench = require('../src/bench');
+
+var bench = new Bench( "tcc-parse", true);
 
 //
 // Configure CLI output on the default logger
@@ -28,6 +31,7 @@ if (!pkgs.length) {
 }
 
 compiler.compile_packages(pkgs, program, function( err, result){
+  bench.stop();
   winston.info( "Result: ", result )
   if(err){
     winston.error("ERROR:",  err.toString() );

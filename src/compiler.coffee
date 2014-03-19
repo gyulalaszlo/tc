@@ -9,7 +9,6 @@ tree_parser = require './tree_parser/tree_parser'
 #templates = require './templates'
 builder = require './builder'
 
-tc_packages = require './metadata'
 
 packaging = require './packaging'
 

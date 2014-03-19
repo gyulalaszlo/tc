@@ -1,9 +1,68 @@
 _ = require 'underscore'
 winston = require 'winston'
+tokens = require '../tokens'
 
 
-expression_tree = require './tree_parser/expression_tree'
+json_serializable = require './json_serializable'
+expression_tree = require './expression_tree'
 
+# ---------------------------------------------------------------------
+
+package_from_units = (units)->
+  # fail on empty packages
+  return null if units.length == 0
+  # create the package
+  package_name = units[0].package.name.text
+  pkg = new Package(package_name)
+  # Add all units to the package
+  for unit in units
+    # check if the unit is in the valid package
+    unit_package_name = unit.package.name.text
+    unless unit_package_name == package_name
+      throw new tokens.TokenError( unit.package.name,  "Package name differs from '#{package_name}'")
+    # We are sure we have the right package
+    add_declarations_to_package( pkg, unit.contents.declarations )
+
+  # return the fresh package
+  pkg
+
+# ---------------------------------------------------------------------
+
+add_declarations_to_package = (pkg, declarations)->
+  # Add the declarations
+  for decl in declarations
+    switch decl._type
+      when 'TYPEDECL'
+        type_name = decl.name.text
+        type_instance = make_type_instance( pkg, type_name, decl )
+        # try to add the documentation
+        type_instance.parse decl.definition
+        # store the type
+        pkg.types[type_name] = type_instance
+
+      # Method lists
+      when 'METHODS'
+        type_name = decl.name.text
+        # since the type may not yet have been defined, proxy it
+        type_instance = new ProxyType( type_name )
+        method_list = new MethodList( type_instance, decl.access )
+        method_list.parse decl.body
+        pkg.method_lists.push method_list
+
+      # Unbound methods 
+      when 'UNBOUND_METHOD'
+        method = new Method( decl.name.text )
+        method.parse decl
+        pkg.unbound_methods.push method
+
+      else
+        throw new Error( "Unknown declaration type: '#{decl._type}'" )
+
+  pkg
+
+#
+# ---------------------------------------------------------------------
+# 
 assert_token_group = ( token, group_name )->
   if token._group != group_name
     throw new Error("expected #{group_name}, got #{token._group} (#{token._type})")
@@ -23,6 +82,8 @@ as_json = (what)->
         ( o[k] = as_json(v) for k,v of what )
         o
 
+# ---------------------------------------------------------------------
+
 class Package
 
   constructor: (@name)->
@@ -35,22 +96,14 @@ class Package
     #_.where( @symbols, type:
   as_json: -> as_json({ name: @name, types: @types, symbols: @symbols, method_lists: @method_lists, unbound_methods: @unbound_methods })
 
-# Base class for serialization
-class JsonSerializable
-  as_json: (data...)-> _.extend( data...)
-
-# Helper base class to serialize stuff with a name
-class JsonSerializableWithName extends JsonSerializable
-  as_json: (data...)-> super({ name: @name }, data...)
-
 # Base class for any type declaration package
-class TypeBase extends JsonSerializableWithName
+class TypeBase extends json_serializable.with_name
   package: null
   parse: (decl)->
   set_docs: (docs)-> @docs = docs
   as_json: (data...)-> super({_resolved: true, docs: @docs}, data...)
 
-class TemplatedType extends JsonSerializableWithName
+class TemplatedType extends json_serializable.with_name
   constructor: (tpl)->
     @is_template = false
     @args = []
@@ -118,7 +171,6 @@ class Interface extends TypeBase
   parse: (as)->
     super(as)
     @methods.parse as.method_list.methods
-    #console.log as.method_list
 
 
 
@@ -142,7 +194,7 @@ class CType extends TypeBase
   as_json: -> super( _type: 'ctype', c_name: @c_name )
 
 # A struct or class data field
-class Field extends JsonSerializableWithName
+class Field extends json_serializable.with_name
   constructor: (data)->
     @name = data.name.text
     @docs = data.docs
@@ -152,13 +204,13 @@ class Field extends JsonSerializableWithName
 
 
 
-class MethodArgument extends JsonSerializableWithName
+class MethodArgument extends json_serializable.with_name
   constructor: (@name)->
   as_json: -> super( type: @type )
   parse: (decl)->
     @type = new ProxyType( decl.type.name.text, decl.type )
 
-class Method extends JsonSerializableWithName
+class Method extends json_serializable.with_name
   constructor: (@name )->
   as_json: -> super( args: @args, returns: @returns, body: @body, docs: @docs )
 
@@ -186,7 +238,7 @@ class Method extends JsonSerializableWithName
 
 
 # A simple list of methods
-class MethodList extends JsonSerializable
+class MethodList extends json_serializable.base
   constructor: (@type, @access)->
     @methods = []
   as_json: -> super( type: @type, access: @access, methods: @methods )
@@ -199,7 +251,7 @@ class MethodList extends JsonSerializable
 
 
 
-class Statement extends JsonSerializable
+class Statement extends json_serializable.base
   as_json: -> super( @attrs, _type: @_type, tree: @tree )
   constructor: (tree)->
     @tree = {}
@@ -229,12 +281,7 @@ class Statement extends JsonSerializable
         #switch
           #when _t in ["EXPR"] then @_type = "expression"; @tree = expression_tree.make(tree.expr)
 
-
 type_base_map = CLASS: Class, STRUCT: Struct, ALIAS: Alias, CTYPE: CType, INTERFACE: Interface
-
-# Get a units package name
-package_name_for_unit = (unit)->
-  unit.package.name.text
 
 
 # Get a types key from the declaration.
@@ -255,58 +302,8 @@ make_type_instance = (pkg, name, decl)->
   type_instance.package = pkg
   type_instance
 
-add_declarations_to_package = (pkg, declarations)->
-  # Add the declarations
-  for decl in declarations
-    switch decl._type
-      when 'TYPEDECL'
-        type_name = decl.name.text
-        type_instance = make_type_instance( pkg, type_name, decl )
-        # try to add the documentation
-        type_instance.parse decl.definition
-        # store the type
-        pkg.types[type_name] = type_instance
-
-      # Method lists
-      when 'METHODS'
-        type_name = decl.name.text
-        # since the type may not yet have been defined, proxy it
-        type_instance = new ProxyType( type_name )
-        method_list = new MethodList( type_instance, decl.access )
-        method_list.parse decl.body
-        pkg.method_lists.push method_list
-
-      # Unbound methods 
-      when 'UNBOUND_METHOD'
-        method = new Method( decl.name.text )
-        method.parse decl
-        pkg.unbound_methods.push method
-
-      else
-        throw new Error( "Unknown declaration type: '#{decl._type}'" )
-
-  pkg
 
 
-
-
-package_from_units = (units)->
-  # fail on empty packages
-  return null if units.length == 0
-  # create the package
-  package_name = package_name_for_unit units[0]
-  pkg = new Package(package_name)
-  # Add all units to the package
-  for unit in units
-    # check if the unit is in the valid package
-    unit_package_name = package_name_for_unit unit
-    unless unit_package_name == package_name
-      throw new Error("Package name '#{unit_package_name}' differs from '#{package_name}'")
-    # We are sure we have the right package
-    add_declarations_to_package( pkg, unit.contents.declarations )
-
-  # return the fresh package
-  pkg
 
 module.exports =
   Class: Class
