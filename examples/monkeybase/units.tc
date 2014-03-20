@@ -21,7 +21,7 @@ type UnitInstance = struct {
   The template metadata for a unit template
 """
 type UnitTemplate = interface {
-  DataSize = ( )-> U32
+  DataSize = ()-> U32
   Initialize = (data:void*)->
 }
 
