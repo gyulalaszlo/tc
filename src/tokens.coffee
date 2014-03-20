@@ -16,6 +16,7 @@ class TokenError
   toString: ->
     "(#{source_position @token.start} '#{@token.text}'): #{@message}"
 
+
 module.exports =
   TokenError: TokenError
   source_position: source_position
