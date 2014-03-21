@@ -1,5 +1,6 @@
-_             = require 'underscore'
-async         = require 'async'
+_            = require 'underscore'
+async        = require 'async'
+path         = require 'path'
 
 parserHelper = require '../parser/parser_helper'
 
@@ -34,7 +35,12 @@ parsePackageList = (root, packageList, options, callback)->
       # parse the files in file_list with parser
       parseFn = (file, callback)->
         results.parser.parse_file file.path, (res)->
-          callback( null, res )
+          # save the parsed output if asked for
+          if options.saveParseTree
+            file.dir.output_json "#{path.basename(file.path)}.parsed", res, (err)->
+              callback( err, res )
+          else
+            callback( null, res )
 
       # run the parsing paralel for the file list
       async.map results.fileList, parseFn, (err, parsed)->
@@ -55,7 +61,6 @@ parsePackageList = (root, packageList, options, callback)->
     # (types, method_sets, templates)
     separateDefinitions: [ 'reduceResults', (callback, results)->
       packages = _.pairs results.reduceResults
-      console.log "packages: ", packages
       packData = _.map packages, separatePackageDefinitions
       callback( null, packData )
     ]
@@ -83,29 +88,6 @@ createPackageFileList = (root, packageList, options, callback)->
   async.map packageDirs, mapFn, (err, packageFileList)->
     callback( err, packageFileList )
 
-# Copy all the properties of what to memo and concat any array
-# properties
-mergeWith = (memo, what)->
-  for k,v of what
-    existing = memo[k]
-    switch
-
-      # if the existing property is an array, merge our array
-      # with it
-      when _.isArray existing
-        # check if we can merge
-        unless _.isArray( v )
-          throw new Error("Tried to merge an array property and a non-array property: #{ JSON.stringify( key: k, value: v, existing: existing ) }")
-        # merge
-        memo[k] = existing.concat v
-
-      when _.isObject existing
-        mergeWith( existing, v )
-      # otherwise just set the property
-      else
-        memo[k] = v
-  # return just in case
-  return memo
 
 # Collect the definitions from the multiple emitted definitions
 # into a single structured object grouped by package
@@ -141,6 +123,32 @@ separatePackageDefinitions = (packageArr)->
   # set the package name
   ret.name = packageName
   ret
+
+
+# Copy all the properties of what to memo and concat any array
+# properties
+mergeWith = (memo, what)->
+  for k,v of what
+    existing = memo[k]
+    switch
+
+      # if the existing property is an array, merge our array
+      # with it
+      when _.isArray existing
+        # check if we can merge
+        unless _.isArray( v )
+          throw new Error("Tried to merge an array property and a non-array property: #{ JSON.stringify( key: k, value: v, existing: existing ) }")
+        # merge
+        memo[k] = existing.concat v
+
+      when _.isObject existing
+        mergeWith( existing, v )
+      # otherwise just set the property
+      else
+        memo[k] = v
+  # return just in case
+  return memo
+
 
 
 module.exports =
