@@ -42,13 +42,13 @@ class PackageDir
     # wirte ut via fs-extra
     file_path = path.join( @output_dir(), filename )
     #winston.info("Starting to write #{file_path}")
-    bench = new Bench "write file '#{file_path}'", true
+    bench = new Bench "write file '#{file_path}' [#{contents.length} bytes]", true
     fs.outputFile file_path, contents, (err)->
       if err
         winston.error("Error while trying to write '#{file_path}': #{err}", err)
       else
         bench.stop()
-      callback(err) if callback
+      callback(err, file_path, contents) if callback
 
 
   # Save something to the output dir as JSON
