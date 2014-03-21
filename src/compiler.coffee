@@ -35,7 +35,6 @@ compile_packages = (packageList, options, callback)->
         return saveNormalizedForm root, resolved_packages, (err, files)->
           callback( err, files )
 
-      console.log err, resolved_packages
       # We are finished
       callback( err, [] )
 
