@@ -14,11 +14,20 @@ packaging = require './packaging'
 
 resolver = require './resolver/resolver'
 
+parser_map = require './parser_mapreducer/parser_map.coffee'
 
 # Compile a list of package. For options, see bin/tcc-parser
 compile_packages = (package_list, options, callback)->
   root = new packaging.Root( options.root )
   winston.info "Inside '#{path.normalize(root.dir)}'"
+
+  parser_map.parse_package_list root, package_list, options, (err, res)->
+    winston.info JSON.stringify( res, null, 2 )
+    if err
+      winston.error "error", err
+      winston.error err.stack 
+
+  return
   tree_parser.parse_packages root, package_list, options, (err, parsed_packages)->
     # Handle errors
     return callback(err, parsed_packages) if err

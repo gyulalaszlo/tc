@@ -5,7 +5,8 @@ path          = require 'path'
 
 parser_helper = require '../parser/parser_helper'
 tc_packages   = require './structure_tree'
-Bench = require '../bench'
+
+Bench         = require '../bench'
 
 GRAMMAR_FILE_PATH =  "#{__dirname}/../../grammar/tc.pegjs"
 GRAMMAR_FILE_ALT_PATH =  "#{__dirname}/../../grammar/tc2.pegjs"
@@ -15,7 +16,8 @@ parse_packages = (root, package_list, options, callback)->
   parser_helper.with_parser GRAMMAR_FILE_ALT_PATH, options, (parser)->
     for package_name in package_list
       package_dir = root.getOrCreate package_name
-      package_dir.with_tc_files (fileList)->
+      package_dir.with_tc_files (err, fileList)->
+        return callback(err, []) if err
         parse_package_file_partial = _.partial( parse_package_file, parser, options )
         async.map fileList, parse_package_file_partial, (err, package_files)->
           callback(err, package_files)
@@ -38,7 +40,7 @@ parse_package = (parser, root, options, package_name, callback)->
   #winston.info "Starting to parse package '#{package_name}'"
   # get the package path
   # wait for the package file list
-  package_dir.with_tc_files (file_list)->
+  package_dir.with_tc_files (err, file_list)->
     parse_package_file_partial = _.partial( parse_p2Yackage_file, parser, options )
     async.map file_list, parse_package_file_partial, (err, package_files)->
       return callback(err, null) if err

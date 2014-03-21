@@ -68,14 +68,16 @@ class PackageDir
     package_path = @dir()
     package_dir = @
     @must_exist (exists)->
-      return callback([]) unless exists
+      unless exists
+        return callback(new Error("Package directory '#{package_path}' for '#{@name}' does not exist."), [])
       # now the directory exists
       fs.readdir package_path, (err, files)->
+        return callback(err, []) if err
         # the current map function to filter the file list
         filename_eraser = (fn)-> if is_tc_file(fn) then { path: path.join(package_path, fn), file: fn, dir: package_dir } else null
         # map to all file names
         all_files = _.chain( files ).map( filename_eraser ).without( null ).value()
-        callback(all_files)
+        callback(null, all_files)
 
 
 

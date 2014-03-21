@@ -24,7 +24,10 @@
 
 
 start
-  = package:PackageDecl contents:Contents ->{{ COMPILATION_UNIT with package, contents }}
+  = package:PackageDecl contents:Contents
+  {
+    return contents;
+  }
 
 NL_CHARS = [\n\r]
 
