@@ -10,6 +10,14 @@ type F64 = C "double"
 type U64 = C "uint64_t"
 type I64 = C "int64_t"
 
+"""
+  The preferred type for most operations.
+
+  If you need to use a value for indexing in a list or any other task, where
+  negative numbers are a non-issue, you should use this type.
+
+
+"""
 type U32 = C "uint32_t"
 type I32 = C "int32_t"
 

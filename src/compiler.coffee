@@ -14,7 +14,8 @@ packaging = require './packaging'
 
 resolver = require './resolver/resolver'
 
-parser_map = require './parser_mapreducer/parser_map.coffee'
+parser_map = require './parser_mapreducer/parser_map'
+resolver = require './parser_mapreducer/resolver'
 
 # Compile a list of package. For options, see bin/tcc-parser
 compile_packages = (packageList, options, callback)->
@@ -27,8 +28,16 @@ compile_packages = (packageList, options, callback)->
       return saveTypeTree root, packages, (err, files)->
         callback( err, files )
 
-    # We are finished
-    callback( err, packages )
+    # time to resolve the packages
+    resolver.resolvePackageList packages, (err, resolved_packages)->
+      return callback(err, []) if err
+      if options.saveNormalizedForm
+        return saveNormalizedForm root, resolved_packages, (err, files)->
+          callback( err, files )
+
+      console.log err, resolved_packages
+      # We are finished
+      callback( err, [] )
 
 
 # resolve and build a single package
@@ -55,6 +64,18 @@ saveTypeTree = ( root, packages, callback )->
     callback( err, filePaths )
 
 
+
+# Write out the type trees for all the packages
+saveNormalizedForm = ( root, resolved_packages, callback )->
+  # write out a packages typetree
+  writePackage = (pack, callback)->
+    #console.log pack
+    packageDir = root.getOrCreate pack.name
+    packageDir.output_json "../#{pack.name}.normalized.json", pack, (err, filePath, contents)->
+      callback( err, filePath )
+
+  async.map resolved_packages, writePackage, (err, filePaths)->
+    callback( err, filePaths )
 
 module.exports =
   compile_packages: compile_packages
