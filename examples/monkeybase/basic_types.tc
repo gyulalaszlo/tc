@@ -41,9 +41,9 @@ type Callback32 = struct {
     6 * 4 bytes of data for the callback
   """
   data: U32[6]
-  data2: U32[6]
-  data3: U32[6]
-  data3: U32*
+  data2: U32*[6]
+  data3: U32[6]*
+  data3: U32**
 }
 
 //type List = struct<T: typename> {

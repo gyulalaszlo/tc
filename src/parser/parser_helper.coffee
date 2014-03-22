@@ -117,7 +117,7 @@ _.extend exports,
         bench.stop()
         callback( new ParserHelper(parser) )
     else
-      parser = require '../../lib/tc.peg'
+      parser = require '../../lib/tc2.peg'
       callback( new ParserHelper(parser) )
 
 

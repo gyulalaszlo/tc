@@ -52,14 +52,19 @@ class Method extends Struct
     decl: 'MethodDeclaration'
     body: 'StatementList'
 
-i32 = new TypeDeclaration {
-  name: "I32"
-  docs: null
-  as: new CType {
-    docs: null
-    raw: "int32_t"
-  }
-}
 
-console.log i32.toJSON()
+module.exports =
+  Identifier: Identifier
+  TypeDeclaration: TypeDeclaration
+  CType: CType
+  Alias: Alias
+  Struct: Struct
+  Class: Class
+  Mixin: Mixin
+  Interface: Interface
+  MethodDeclaration: MethodDeclaration
+  MethodArgument: MethodArgument
+  MethodSet: MethodSet
+  Method: Method
+
 

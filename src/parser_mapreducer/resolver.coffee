@@ -2,21 +2,29 @@ _ = require 'underscore'
 async = require 'async'
 tokens = require '../tokens'
 
+
+resolverCommon = require './resolver/common'
+extendedTypes = require './resolver/extended_types'
+
 # Normalize a list of packges.
 exports.resolvePackageList = resolvePackageList = (packages, callback)->
 
   async.auto {
     # make sure we are using a workable order
     orderedTypes: (callback)->
+      # A fixed order for the type declarations
       typeOrder = { ctype: 0, alias: 1, struct: 2, class: 3, mixin: 4, interface: 5  }
       ordered = _.map packages, (p)->
+        # order the types by the order declared in typeOrder
         types = _.sortBy( p.types, (t)-> typeOrder[t.type._type] )
-        { name: p.name, types: _.values( types  ) }
+        # order the method sets by name
+        methodSets = _.sortBy( p.method_sets, (ms)-> ( if ms.target then ms.target.text else '__unbound' ) )
+        { name: p.name, types: _.values( types  ), methodSets: methodSets }
       callback( null, ordered )
 
     # TODO: add imported types before resolution
     extendedTypes: [ 'orderedTypes', (callback, results)->
-      async.map results.orderedTypes, addExtendedTypes, callback
+      async.map results.orderedTypes, extendedTypes.addExtendedTypes, callback
     ]
 
     resolvePublished: [ 'extendedTypes', (callback, results)->
@@ -24,45 +32,8 @@ exports.resolvePackageList = resolvePackageList = (packages, callback)->
     ]
 
   }, (err, results)->
+    #return callback( err, results.extendedTypes )
     callback( err, results.resolvePublished )
-
-
-
-# Add any extended types derived from the published normal ones
-# created in the first step.
-# Returns the list of types to be created (names only)
-addExtendedTypes = (pack, callback)->
-  extendedTypes = []
-
-  # Helper to convert an extended type to a list of types
-  # that mimic that extension while renrencing their base
-  # type.
-  makeExtendedType = (t)->
-
-    # We dont need the base type
-    makeExtendedTypeToList( t )[1..-1]
-
-  async.parallel [
-
-    # An alias needs its original to be created if its an extended type
-    (callback)->
-      mapToTypes pack, ['alias'], callback, (t)->
-        makeExtendedType( t.type.original )
-
-    # Structured data needs its fields checked for extended types
-    (callback)->
-      mapToTypes pack, ['struct', 'class', 'mixin'], callback, (t)->
-        for field in t.type.fields
-          makeExtendedType( field.type )
-
-  ], (err, results)->
-    # filter the duplicates
-    typesToAdd = _.uniq( _.flatten(results), (t)-> t.name.text )
-    # append to the pack
-    pack.types = pack.types.concat typesToAdd
-    callback( err, pack )
-
-
 
 # First, all the types declared by each package must be normalized, so
 # cross-package lookup can start. First we set up proxy types for every
@@ -80,11 +51,11 @@ proxifyPublishedTypes = (pack, callback)->
 
 
   resolveTypeName = (type)->
-    typeName = getExtendedTypename( type )
+    typeName = resolverCommon.getExtendedTypename( type )
     # if we dont have it on catalog
     unless typeNameIndex[typeName]
       # check if this is an extension type
-      throw new tokens.TokenError( getTypeBase(type).base, "Cannot resolve type '#{typeName}'")
+      throw new tokens.TokenError( resolverCommon.getTypeBase(type).base, "Cannot resolve type '#{typeName}'")
 
     typeNameIndex[typeName].id
 
@@ -102,92 +73,99 @@ proxifyPublishedTypes = (pack, callback)->
 
     _.extend( typeAttributes, attrs... )
 
-  async.parallel [
+  # apply the resolver to each type
+  typeMapperFns = resolverCommon.createTypeMapper pack, {
 
     # Add the ctypes (they are always safe to start with.
-    (callback)->
-      mapToTypes pack, ['ctype'], callback, (t)->
-        makeType(t, raw: t.type.raw )
+    ctype: (t)->
+      makeType(t, raw: t.type.raw )
 
     # Aliases need their original resolved
-    (callback)->
-      mapToTypes pack, ['alias'], callback, (t)->
-        original = resolveTypeName( t.type.original )
-        makeType( t, original: original, dependsOn: [original] )
+    alias: (t)->
+      original = resolveTypeName( t.type.original )
+      makeType( t, original: original, dependsOn: [original] )
 
-    (callback)->
-      mapToTypes pack, ['struct', 'class', 'mixin'], callback, (t)->
-        fields = for field in t.type.fields
-          fieldTypeId = resolveTypeName( field.type )
-          { name: field.name.text, start: field.name.start, type: fieldTypeId }
-        makeType( t, start: t.name.start, fields: fields, dependsOn: _.chain(fields).pluck('type').uniq().value() )
+    'struct class mixin': (t)->
+      fields = for field in t.type.fields
+        fieldTypeId = resolveTypeName( field.type )
+        { name: field.name.text, start: field.name.start, type: fieldTypeId }
+      makeType( t, start: t.name.start, fields: fields, dependsOn: _.chain(fields).pluck('type').uniq().value().sort() )
 
-    (callback)->
+    'interface': (t)->
       # TODO: do a proper type resolution
-      mapToTypes pack, ['interface'], callback, (t)->
-        makeType(t, start: t.name.start )
+      makeType(t, start: t.name.start )
 
+    'extended': (t)->
+      base = typeNameIndex[t.base].id
+      makeType( t, base: base, dependsOn: [base], extension: t.extension )
+  }
+
+  methodMapperFns = [
     (callback)->
-      mapToTypes pack, ['extended'], callback, (t)->
-        base = typeNameIndex[t.base].id
-        makeType( t, base: base, dependsOn: [base] )
+      err = 0
+      try
+        result = _.map pack.methodSets, methodSetCheckerFn,
+          typeNameIndex: typeNameIndex
+          resolveTypeName: resolveTypeName
+      catch e
+        err = e
+      return callback( err, result )
+  ]
 
-
-
-  ], (err, results)->
+  async.parallel methodMapperFns.concat( typeMapperFns ), (err, results)->
     packageData = {
       name: pack.name
-      types: _.flatten(results)
+      types: _.flatten(results[1..-1])
+      methodSets: results[0]
     }
     callback( err, packageData )
 
 
-# Create a list of well-ordered extensions
-# by reversing the extension tree of types
-#
-#     { base: { base: { text: "foo" }, extension: null }, extension: {_type:"pointer"} }
-#
-# gets converted to
-#
-#     [ { base: {/*...*/}, name: "foo" }, { extension:{ _type: "pointer"}, name: "foo*"  } ]
-#
-makeExtendedTypeToList = (t)->
-  o = []; it = t
-  while it.extension
-    # add the extension to the end of the type
-    o.unshift { name: { text: getExtendedTypename(it)}, base: getExtendedTypename(it.base) , extension: it.extension, type:{_type: 'extended'} }
-    it = it.base
-  o.unshift { base: it.base, name: it.base.text }
+tryTypename = (typeNameIndex, t)->
+    target = typeNameIndex[ t.text ]
+    return target if target != undefined
+    throw new tokens.TokenError( t, "Cannot find type with name: #{t.text}")
+
+
+# Map function to get the extended types to be created from method declarations
+methodSetCheckerFn = (ms)->
+
+  # resolve the target first
+  target = { type: null, id: -1 }
+  if ms.target
+    target = tryTypename( @typeNameIndex, ms.target )
+
+  # then resolve the methods
+  methods = _.map ms.methods, methodCheckerFn, @
+  return {
+    target: target.id
+    methods: methods
+  }
+
+methodCheckerFn = (m)->
+  func = m.func
+  o = {
+    name: m.name.text
+    start: m.name.start
+    args:_.map( func.args, methodArgCheckerFn, @)
+    returns: _.map( func.returns, methodReturnCheckerFn, @ )
+  }
   o
 
 
-# helper to find types fast
-mapToTypes = (pack, _typenames, callback, iter)->
-  try
-    res = _.chain(pack.types).filter((e)-> e.type._type in _typenames).map(iter).value()
-    callback( null, res)
-  catch e
-    callback( e, [])
+methodArgCheckerFn = (a)->
+  argT = @resolveTypeName( a.type )
+  {
+    type: argT
+    name: a.name.text
+    start: a.name.start
+  }
 
+methodReturnCheckerFn = (r)->
+  argT = @resolveTypeName( r )
+  {
+    type: argT
+    start: resolverCommon.getTypeBase( r ).base.start
+  }
 
-
-getTypeBase = (type)->
-  return type unless type.extension
-  return getTypeBase( type.base )
-
-
-# Get a string representing the given type
-getExtendedTypename = (type)->
-  ext = type.extension
-  return type.base.text unless ext
-  # otherwise recurse
-  getExtendedTypename( type.base) + getExtensionString( ext )
-
-
-# Helper to get the text for an extension.
-getExtensionString = (ext)->
-  switch ext._type
-    when "array" then "[#{ext.size}]"
-    when "pointer" then "*"
-    when "reference" then "&"
 

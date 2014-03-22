@@ -1,7 +1,6 @@
 
 # get the source position of a token
 source_position = (pos)->
-  console.log pos
   "(#{pos.line}:#{pos.column})"
 
 class TokenError
