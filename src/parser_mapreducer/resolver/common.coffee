@@ -12,16 +12,19 @@ mapHandlersToTypes = (pack, handlers=[], callback)->
   mapFns = createTypeMapper( pack, handlers )
   # map it in a parallel way
   async.parallel mapFns, (err, results)->
-    return callback(err, null) if err
-    callback( null, _.flatten(results) )
+    if err
+      callback(err, null)
+    else
+      callback( null, _.flatten(results) )
 
 
 createTypeMapper = (pack, handlers)->
   # create a list
   _.map handlers, (handler, name)->
     matchedTypes = name.split /\s+/
-    return (callback)->
+    fn = (callback)->
       mapToTypes( pack, matchedTypes, callback, handler )
+    return fn
 
 # helper to find types fast
 mapToTypes = (pack, _typenames, callback, iter)->
