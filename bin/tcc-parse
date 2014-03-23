@@ -37,7 +37,20 @@ compiler.compile_packages(pkgs, program, function( err, result){
   winston.info( "Result: ", result )
   if(err){
     winston.error("ERROR:",  err.toString() );
-    winston.error( err.stack );
+    winston.error("");
+    winston.error("(LINES FROM async.js OMITTED. USE -v TO SHOW THEM)");
+    winston.error("");
+    var lines = (err.stack.split(/\n/));
+    for (var i=0,len=lines.length; i < len; ++i) {
+      if (/async\.js/.test( lines[i])) {
+        if (program.verbose)
+        {
+          winston.error('  -> ' + lines[i]);
+        }
+      } else {
+        winston.error(lines[i]);
+      }
+    }
     process.exit(1);
   }
 });

@@ -28,11 +28,13 @@ createTypeMapper = (pack, handlers)->
 
 # helper to find types fast
 mapToTypes = (pack, _typenames, callback, iter)->
+  err = null
+  res = []
   try
     res = _.chain(pack.types).filter((e)-> e.type._type in _typenames).map(iter).value()
-    return callback( null, res)
   catch e
-    return callback( e, [])
+    err = e
+  callback( err, res )
 
 # Return the base declaration (the token of the base in the deepest nesting)
 getTypeBase = (type)->

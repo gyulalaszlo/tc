@@ -30,7 +30,7 @@ type UnitTemplate = interface {
   A list to register UnitTemplates into
 """
 type UnitTemplateList = class {
-  unitTemplates     : UnitTemplate[256]
+  unitTemplates     : UnitTemplate*[256]
   unitTemplateCount : U32
 }
 

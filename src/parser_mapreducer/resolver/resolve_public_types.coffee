@@ -33,9 +33,8 @@ exports.resolvePublishedTypes = resolvePublishedTypes = (pack, callback)->
 
   # Helper shortcut function to make a type
   makeType = (typedef, attrs...)->
-    thisType = typeNameIndex[ typedef.name.text ]
     typeAttributes =
-      id: thisType.id
+      id: typedef.id
       _type: typedef.type._type
       name: typedef.name.text
       docs: typedef.docs
@@ -73,21 +72,32 @@ exports.resolvePublishedTypes = resolvePublishedTypes = (pack, callback)->
 
   methodMapperFns = [
     (callback)->
-      err = 0
+      err = null
       try
-        result = _.map pack.methodSets, methodSetCheckerFn,
+        checkedMethodSets = _.map pack.methodSets, methodSetCheckerFn,
           typeNameIndex: typeNameIndex
           resolveTypeName: resolveTypeName
+        checked = _( checkedMethodSets )
+        #result = _.chain(checkedMethodSets).map()
+        result =
+          methodSets: checked.pluck( 'methodSet')
+          methods: _.flatten( checked.pluck('methods') )
       catch e
         err = e
-      return callback( err, result )
+      callback( err, result )
   ]
 
   async.parallel methodMapperFns.concat( typeMapperFns ), (err, results)->
+    return callback(err, null) if err
+    # Decompose the results
+    methodSets = results[0]
+    types = _.flatten( results[1..-1] )
+    # create the output
     packageData = {
       name: pack.name
-      types: _.flatten(results[1..-1])
-      methodSets: results[0]
+      types: types
+      methodSets: methodSets.methodSets
+      methods: methodSets.methods
     }
     callback( err, packageData )
 
@@ -99,29 +109,43 @@ tryTypename = (typeNameIndex, t)->
 
 
 # Map function to get the extended types to be created from method declarations
-methodSetCheckerFn = (ms)->
+#
+# TODO: Maybe move the id generation somewhere else.
+# Using underscore's map gives us the index, but async's map does not.
+methodSetCheckerFn = (ms, idx)->
 
   # resolve the target first
   target = { type: null, id: -1 }
   if ms.target
     target = tryTypename( @typeNameIndex, ms.target )
 
+  # set the id for the checker
+  methodCheckerPartial = _.partial( methodCheckerFn, target.id )
   # then resolve the methods
-  methods = _.map ms.methods, methodCheckerFn, @
-  return {
-    target: target.id
-    methods: methods
-  }
+  methods = _.map ms.methods, methodCheckerPartial, @
+  o = methodSet:{ id: ms.id, target: target.id }, methods: methods
+  o
 
 
 # Check and resolve a method
-methodCheckerFn = (m)->
+methodCheckerFn = (targetTypeId, m)->
   func = m.func
+  args = _.map( func.args, methodArgCheckerFn, @)
+  returns = _.map( func.returns, methodReturnCheckerFn, @ )
+  # create the dependency list
+  dependsOn = []
+  dependsOn.push( targetTypeId ) if targetTypeId != -1
+  # add the dependencies from the arguments and return types
+  dependsOn = dependsOn.concat( _.pluck( args, 'type' ), _.pluck( returns, 'type') )
   o = {
+    id: m.id
+    target: targetTypeId
+    methodSet: m.methodSet
     name: m.name.text
     start: m.name.start
-    args:_.map( func.args, methodArgCheckerFn, @)
-    returns: _.map( func.returns, methodReturnCheckerFn, @ )
+    args: args
+    returns: returns
+    dependsOn: _.chain( dependsOn ).sortBy( (e)->e).uniq( true ).value()
     body: func.body.statements
   }
   o

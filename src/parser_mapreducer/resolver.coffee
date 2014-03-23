@@ -5,18 +5,20 @@ async = require 'async'
 extendedTypes = require './resolver/extended_types'
 resolvePublicTypes = require './resolver/resolve_public_types'
 
+addIdsToPackages = require './resolver/add_ids_to_packages'
+
 # Normalize a list of packges.
 exports.resolvePackageList = resolvePackageList = (packages, callback)->
 
-
   # Create a composite function from the separate tasks
   fn = async.compose(
-    #resolveMethodBodies
+    resolveMethodBodies
     resolvePublished
+    addIdsToPackages # NOTE: This method modifies the package data instead of copying it.
     createExtendedTypes
     orderedTypes
   )
-  #fn = async.compose(  resolvePublished, createExtendedTypes, orderedTypes  )
+  # call it
   fn packages, (err, results)->
     callback( err, results )
 
@@ -58,44 +60,10 @@ resolveMethodBodies = (packagesWithPublishedTypesResolved, callback)->
 # Method set resolvers
 # ====================
 
-class ScopeLevel
-  constructor: (@name)->
-    @values = {}
-  set: (key, val)-> @values[key] = val
-  get: (key)-> @values[key]
-  has: (key)-> @values[key] != undefined
+ScopeStack = require './resolver/scope_stack'
+expressions = require './resolver/expressions'
 
-class ScopeStack
-  constructor: (@parent, types, methods)->
-    @levels = []
-    @typeIdMap = _.clone typeIdMap
-
-  push: (name)-> @levels.push new ScopeLevel(name)
-  pop: ()->
-    throw new Error("Tried to pop empty scope") unless @levels.length > 0
-    @levels.pop()
-
-  current: -> @levels[ @levels.length - 1 ]
-
-  # Set something to be visible from the levels bellow this one
-  set: (key, val)-> @current().set( key, val )
-  # Does this scope stack have the given key
-  has: (key)->
-    for l in @levels.reverse
-      return true if l.has( key )
-    # call the parent if necessary
-    return @parent.has(key) if @parent
-    false
-  # Get a key from the scope stack
-  get: (key)->
-    for l in @levels.reverse
-      return l.get( key) if l.has( key )
-    # call the parent if necessary
-    return @parent.get(key) if @parent
-    undefined
-
-
-
+expression = expressions.resolve
 
 # Resolve the bodies of the methods inside the packages.
 #
@@ -104,38 +72,124 @@ class ScopeStack
 packageMethodSetResolver = (pack, callback)->
   # create a shallow copy of pack for our manipulation
   packOut = _.clone( pack )
-  packOut.methodSets = []
+  packOut.methods = []
   # Create the scope stack root
-  scopeStack = new ScopeStack( null, pack.types)
+  scopeStack = new ScopeStack( null, pack.types, pack.methods)
+  scopeStack.push pack.name
   methodResolverFn = _.partial( methodResolver, scopeStack)
   #
-  async.map pack.methodSets, methodSetBodyResolver, (err, results)->
+  async.map pack.methods, methodResolverFn, (err, results)->
     return callback( err, packOut ) if err
-    packOut.methodSets = results
+    packOut.methods = results
     callback( null, packOut )
 
 
-methodSetBodyResolver = (scope, methodSet, callback)->
-  methodSetOut = _.clone(methodSet)
-  # Prepare the scope for our parent
-  scopeStack = new ScopeStack( scope, {})
-  methodResolverFn = _.partial( methodResolver, scopeStack)
-  async.map methodSet.methods, methodResolverFn, (err, results)->
-    # Handle any errors
-    return callback(err, null) if err
-    # If ok, we replace the methods in the methodset output.
-    methodSetOut.methods = results
-    callback( null, methodSetOut )
+#methodSetBodyResolver = (scope, methodSet, callback)->
+  #methodSetOut = _.clone(methodSet)
+  ## Prepare the scope for our parent
+  #scopeStack = new ScopeStack( scope, {})
+  #methodResolverFn = _.partial( methodResolver, scopeStack)
+  #async.map methodSet.methods, methodResolverFn, (err, results)->
+    ## Handle any errors
+    #return callback(err, null) if err
+    ## If ok, we replace the methods in the methodset output.
+    #methodSetOut.methods = results
+    #callback( null, methodSetOut )
 
 
 # Copy the in
 methodResolver = (scope, method, callback)->
+  # Create the output
   methodOut = _.clone method
-  scopeStack = new ScopeStack( scope, {} )
-  methodOut.body = _.map method.body, statementResolver, scopeStack
-  callback( null, methodOut )
+  methodOut.body = []
+  err = null
+  targetType = scope.type(method.target)
+
+  # create the new scope for the statements
+  scopeStack = new ScopeStack( scope, {}, {}, scope.type(method.target) )
+  scopeStack.push targetType.name if targetType
+  scopeStack.push method.name
+
+  # add all the arguments to the scope
+  for arg in method.args
+    scopeStack.set arg.name, arg.type
+
+  # add a new level to the scope stack, so we can find out the variables
+  # declared inside the stack
+  scopeStack.push "body"
+  # try to resolve the body
+  try
+    methodOut.body = _.map method.body, _.partial( statementResolver, scopeStack )
+  catch e
+    err = e
+  callback( err, methodOut )
 
 
 # Resolve a single statement
-statementResolver = (statement)->
-  statement
+statementResolver = (scope, statement)->
+  switch statement._type
+    when 'EXPR' then { _type: 'expr', expr: expression( scope, statement.expr ) }
+    when 'RETURN' then { _type: 'return', expr: expression( scope, statement.expr ) }
+
+    when 'CASSIGN'
+      # resolve the initializer
+      initializerExpr = expression( scope, statement.expr )
+      unless initializerExpr
+        statementJson = JSON.stringify(statement)
+        throw new Error("Cannot resolve right hand side of CAssign: - #{statementJson}")
+
+      # check the return type
+      varType = initializerExpr.type #...
+      unless varType
+        initializerExprJson = JSON.stringify(initializerExpr)
+        throw new Error("Cannot resolve type for left side of CAssign: - #{initializerExprJson}")
+
+      # get the name
+      varName = statement.name
+      scope.set varName.text, varType
+      { _type: 'cassign', name: varName.text, type: varType, start: statement.name.start, expr: initializerExpr }
+
+    else
+      console.log "WARN: Unknown statement type: #{statement._type}"
+      statement
+
+
+
+## Resolve an expression tree.
+##
+## This method simply dispatches to the appropriate handler
+## or reports an error if no handlers are found.
+#expression = ( scope, expr)->
+  #handlerFn = expressionHandlers[ expr._type ]
+  #unless handlerFn
+    #console.log "WARN: Unknown expression type: #{expr._type}"
+    #return _.extend type: -1, expr
+    #throw new Error("Unknown expression type: '#{ expr._type }'")
+  #handlerFn( scope, expr )
+
+
+## The handlers fore each expression
+#expressionHandlers = {}
+
+
+## Accessing the current target via the '@' and '@<fieldname>' or '@<methodname>' shortcut
+#thisAccess = (scope, expr)->
+  #thisType = scope.target
+  ## If this is an access to plain "this" (for value types)
+  #unless expr.name
+    #{ _type: 'this', type: thisType.id }
+
+  ## If this is a field access on a structured type
+  #else
+    #fieldName = expr.name.text
+    #accessedField = _.findWhere( thisType.fields ,name: fieldName)
+    ## check if the field exists
+    #unless accessedField
+      #throw new TokenError( expr.name, "Cannot find field '#{fieldName}' on type '#{thisType.name}'", fieldName  )
+    #accessedType = scope.type( accessedField.type )
+
+    #{ _type: 'this', name: expr.name.text, start: expr.name.start, type: accessedType.id }
+
+#_.extend expressionHandlers,
+  #THIS_ACCESS: thisAccess
+

@@ -6,7 +6,7 @@ Expression_
     { return merge_expr( "expr", "EXPR_LIST", head, tail ); }
 
 PrimaryExpression
-  = ThisToken       {  return { _type: "THIS", _group: 'expr' }; }
+  = ThisToken       {  return { _type: "THIS_ACCESS", _group: 'expr' }; }
   / name:Identifier ->{{ expr.VARIABLE with name }}
   / ThisAccess
   / value:Literal ->{{ expr.LITERAL with value }}
