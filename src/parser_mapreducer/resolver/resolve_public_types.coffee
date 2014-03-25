@@ -5,6 +5,9 @@ tokens = require '../../tokens'
 
 resolverCommon = require './common'
 
+CAPITAL_A = "A".charCodeAt(0)
+CAPITAL_Z = "Z".charCodeAt(0)
+isPublished = (name)-> CAPITAL_A <= name.charCodeAt(0) <= CAPITAL_Z
 
 # First, all the types declared by each package must be normalized, so
 # cross-package lookup can start. First we set up proxy types for every
@@ -40,6 +43,7 @@ exports.resolvePublishedTypes = resolvePublishedTypes = (pack, callback)->
       docs: typedef.docs
       start: typedef.name.start
       dependsOn: []
+      isPublished: isPublished( typedef.name.text )
 
     _.extend( typeAttributes, attrs... )
 
@@ -58,7 +62,13 @@ exports.resolvePublishedTypes = resolvePublishedTypes = (pack, callback)->
     'struct class mixin': (t)->
       fields = for field in t.type.fields
         fieldTypeId = resolveTypeName( field.type )
-        { name: field.name.text, start: field.name.start, type: fieldTypeId, docs: field.docs }
+        {
+          name: field.name.text
+          start: field.name.start
+          type: fieldTypeId
+          docs: field.docs
+          isPublished: isPublished( field.name.text )
+        }
       makeType( t, start: t.name.start, fields: fields, dependsOn: _.chain(fields).pluck('type').uniq().value().sort() )
 
     'interface': (t)->
@@ -155,6 +165,7 @@ methodCheckerFn = (targetTypeId, resolveBody, m)->
     target: targetTypeId
     methodSet: m.methodSet
     name: m.name.text
+    isPublished: isPublished( m.name.text )
     start: m.name.start
     args: args
     returns: returns
@@ -163,7 +174,6 @@ methodCheckerFn = (targetTypeId, resolveBody, m)->
     docs: m.docs
   }
   o.body = func.body.statements if resolveBody
-  console.log o unless resolveBody
   o
 
 

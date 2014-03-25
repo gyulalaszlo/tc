@@ -111,7 +111,6 @@ packageMethodSetResolver = (pack, callback)->
 
 
 interfaceResolver = (scope, iface, callback )->
-  console.log "Resolving interface:", iface
   callback( null, iface)
 #methodSetBodyResolver = (scope, methodSet, callback)->
   #methodSetOut = _.clone(methodSet)

@@ -50,3 +50,9 @@ public UnitTemplateList = {
     @unitTemplateCount += 1
   }
 }
+
+type unitBuffer = struct {
+  id       : Id64
+  size     : U32
+  capacity : U32
+}
