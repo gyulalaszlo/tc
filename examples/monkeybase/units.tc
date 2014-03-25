@@ -1,7 +1,7 @@
 package monkeybase
 
 type UnitInstance = struct {
-  Id: Id
+  Id: Id64
 
   """
     Since the unit may have its own buffers, its
@@ -14,7 +14,7 @@ type UnitInstance = struct {
   """
   // note: the declaration with a space at the end before a
   // newline must not throw an exceptinon
-  TempalateId: Id
+  TempalateId: Id64
 }
 
 """
@@ -45,7 +45,7 @@ public UnitTemplateList = {
   """
     Register a new template for creation
   """
-  AddTemplate = ( template:UnitTemplate* )-> Id {
+  AddTemplate = ( template:UnitTemplate* )-> Id64 {
     @unitTemplates[ @unitTemplateCount ] = template
     @unitTemplateCount += 1
   }

@@ -43,7 +43,7 @@ type Callback32 = struct {
   data: U32[6]
   data2: U32*[6]
   data3: U32[6]*
-  data3: U32**
+  data4: U32**
 }
 
 //type List = struct<T: typename> {

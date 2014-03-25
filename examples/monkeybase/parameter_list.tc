@@ -22,7 +22,7 @@ func DeleteParameter = ( param:Parameter )-> {
 """
   Make a new parameter.
 """
-func MakeParameter = ( generator:IdGenerator*, groupId:Id )-> Parameter {
+func MakeParameter = ( generator:IdGenerator*, groupId:Id64 )-> Parameter {
   //return Parameter{
     //Id = generator.Next(),
     //GroupId = groupId,

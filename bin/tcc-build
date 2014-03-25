@@ -7,7 +7,7 @@ var compiler = require('../src/compiler');
 var Bench = require('../src/bench');
 
 var cli = require('../src/cli');
-var bench = new Bench( "tcc-parse", true);
+var bench = new Bench( "tcc-build", true);
 
 //
 // Configure CLI output on the default logger
@@ -15,11 +15,12 @@ var bench = new Bench( "tcc-parse", true);
 winston.cli();
 
 program
-  .option( '-p, --save-parse-tree', 'Save the parsed tree and stop.', false )
-  .option( '-t, --save-type-tree', 'Save the type tree', false )
-  .option( '-n, --save-normalized-form', 'Save the normalized form of types', false )
+  .option( '-g, --generator <GENERATOR>', 'Use GENERATOR to generate the output', "cpp" )
+  //.option( '-p, --save-parse-tree', 'Save the parsed tree and stop.', false )
+  //.option( '-t, --save-type-tree', 'Save the type tree', false )
+  //.option( '-n, --save-normalized-form', 'Save the normalized form of types', false )
 
-  .option( '-G, --rebuild-grammar', 'Save the normalized form of types', false )
+  //.option( '-G, --rebuild-grammar', 'Save the normalized form of types', false )
 
 
 cli.addCommonOptions( program );
@@ -31,4 +32,5 @@ var pkgs = program.args;
 cli.checkPackageList( pkgs, program );
 
 // run the compiler
-compiler.compile_packages(pkgs, program, cli.errorChecks );
+compiler.buildPackages(pkgs, program, cli.errorChecks );
+

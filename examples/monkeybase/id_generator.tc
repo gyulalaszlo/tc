@@ -4,12 +4,12 @@ package monkeybase
   A simple Generator for sequential Id genration
 """
 type IdGenerator = class {
-  id:Id;
-  increment:Id;
+  id:Id64;
+  increment:Id64;
 }
 
 // these declarations should be accessible before this line
-type Id = alias U64
+type Id64 = alias U64
 type Float = alias F32
 type Double = alias F64
 
@@ -24,7 +24,7 @@ public IdGenerator = {
       this.increment = 1
   }
 
-  Constructor = ( start: Id, increment: Id )-> {
+  Constructor = ( start: Id64, increment: Id64 )-> {
       @id = start
       @increment = increment
   }
@@ -32,7 +32,7 @@ public IdGenerator = {
   """
     Get the id and advance the generator
   """
-  Next = ()-> Id {
+  Next = ()-> Id64 {
     out := @id
     @id += 1
     return out
@@ -43,7 +43,7 @@ public IdGenerator = {
   """
     Reset the counter for the generator
   """
-  Reset = ( start:Id ) -> {
+  Reset = ( start:Id64 ) -> {
     @id = start
   }
 

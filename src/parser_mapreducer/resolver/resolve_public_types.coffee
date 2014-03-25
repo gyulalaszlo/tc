@@ -58,12 +58,24 @@ exports.resolvePublishedTypes = resolvePublishedTypes = (pack, callback)->
     'struct class mixin': (t)->
       fields = for field in t.type.fields
         fieldTypeId = resolveTypeName( field.type )
-        { name: field.name.text, start: field.name.start, type: fieldTypeId }
+        { name: field.name.text, start: field.name.start, type: fieldTypeId, docs: field.docs }
       makeType( t, start: t.name.start, fields: fields, dependsOn: _.chain(fields).pluck('type').uniq().value().sort() )
 
     'interface': (t)->
       # TODO: do a proper type resolution
-      makeType(t, start: t.name.start )
+      #methods = for meth t.type.methods
+      methodCheckerPartial = _.partial( methodCheckerFn, -1, false )
+      # then resolve the methods
+      methods = _.chain( t.type.methods ).map( methodCheckerPartial, {
+          typeNameIndex: typeNameIndex
+          resolveTypeName: resolveTypeName
+      }).each( (el)->
+        delete el.id
+        delete el.target
+        delete el.body
+        delete el.methodSet
+      ).value()
+      makeType(t, start: t.name.start, methods: methods )
 
     'extended': (t)->
       base = typeNameIndex[t.base].id
@@ -92,6 +104,7 @@ exports.resolvePublishedTypes = resolvePublishedTypes = (pack, callback)->
     # Decompose the results
     methodSets = results[0]
     types = _.flatten( results[1..-1] )
+    #console.log _.chain(types).filter((t)->t._type in ['struct', 'class'] ).pluck('fields').flatten().pluck('docs').value().join("\n")
     # create the output
     packageData = {
       name: pack.name
@@ -120,7 +133,7 @@ methodSetCheckerFn = (ms, idx)->
     target = tryTypename( @typeNameIndex, ms.target )
 
   # set the id for the checker
-  methodCheckerPartial = _.partial( methodCheckerFn, target.id )
+  methodCheckerPartial = _.partial( methodCheckerFn, target.id, true )
   # then resolve the methods
   methods = _.map ms.methods, methodCheckerPartial, @
   o = methodSet:{ id: ms.id, target: target.id }, methods: methods
@@ -128,7 +141,7 @@ methodSetCheckerFn = (ms, idx)->
 
 
 # Check and resolve a method
-methodCheckerFn = (targetTypeId, m)->
+methodCheckerFn = (targetTypeId, resolveBody, m)->
   func = m.func
   args = _.map( func.args, methodArgCheckerFn, @)
   returns = _.map( func.returns, methodReturnCheckerFn, @ )
@@ -146,8 +159,11 @@ methodCheckerFn = (targetTypeId, m)->
     args: args
     returns: returns
     dependsOn: _.chain( dependsOn ).sortBy( (e)->e).uniq( true ).value()
-    body: func.body.statements
+    body: null
+    docs: m.docs
   }
+  o.body = func.body.statements if resolveBody
+  console.log o unless resolveBody
   o
 
 

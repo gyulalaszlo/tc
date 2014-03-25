@@ -81,6 +81,20 @@ class PackageDir
 
 
 
+  normalizedFileName: -> "_.#{@name}.normalized.json"
+  normalizedFilePath: -> path.join( @output_dir(), @normalizedFileName() )
+
+  outputNormalizedFile: ( contents, callback)->
+    @output_json @normalizedFileName(), contents, callback
+
+
+  readNormalizedFile: (callback)->
+    fs.readJson @normalizedFilePath(), (err, contents)->
+      callback( err, contents )
+
+
+
+
 
 
 module.exports =

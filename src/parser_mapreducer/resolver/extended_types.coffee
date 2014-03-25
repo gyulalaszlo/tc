@@ -22,8 +22,13 @@ addExtendedTypes = (pack, callback)->
 
     # Structured data needs its fields checked for extended types
     'struct class mixin': (t)->
+      #makeExtendedType( field.type )
+      #_.map( t.type.fields, makeExtendedType )
       for field in t.type.fields
         makeExtendedType( field.type )
+
+    'interface': (t)->
+      _.map( t.type.methods, methodCheckerFn )
 
   }
 

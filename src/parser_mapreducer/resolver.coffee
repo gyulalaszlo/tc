@@ -70,20 +70,49 @@ expression = expressions.resolve
 # This function creates a shallow copy of pack and remaps
 # the methodSets inside it
 packageMethodSetResolver = (pack, callback)->
-  # create a shallow copy of pack for our manipulation
-  packOut = _.clone( pack )
-  packOut.methods = []
   # Create the scope stack root
   scopeStack = new ScopeStack( null, pack.types, pack.methods)
   scopeStack.push pack.name
   methodResolverFn = _.partial( methodResolver, scopeStack)
+  interfaceResolverFn = _.partial( interfaceResolver, scopeStack)
   #
-  async.map pack.methods, methodResolverFn, (err, results)->
-    return callback( err, packOut ) if err
-    packOut.methods = results
-    callback( null, packOut )
+  # Function to resolve the method sets
+  resolveMethodSets = (callback)->
+    async.map pack.methods, methodResolverFn, (err, results)->
+      #return callback( err, packOut ) if err
+      #packOut.methods = results
+      callback( err, results )
+
+  # Function to resolve the interfaces
+  resolveInterfaces = (callback)->
+    # Get a shortened copy of the interface tyepes
+    #
+    interfaces = _.where(pack.types, _type: 'interface')
+    async.map interfaces, interfaceResolverFn, callback
+
+  async.parallel [resolveMethodSets, resolveInterfaces], (err, results)->
+    # create a shallow copy of pack for our manipulation
+    packOut = _.clone( pack )
+    packOut.methods = []
+    # on error return this temporary object
+    return callback(err, packOut) if err
+    # otherwise merge the results
+    [methodSets, interfaces] = results
+    packOut.methods = methodSets
+    # replace the interfaces with the resolved types
+    for t,i in packOut.types
+      continue unless t._type == 'interface'
+      replacementInterface = _.findWhere( interfaces, id: t.id )
+      unless replacementInterface
+        throw new Error("Cannot find resolved interface for id:#{t.id}")
+      packOut.types[i] = replacementInterface
+    # return the replaced interfaces
+    callback( null, packOut)
 
 
+interfaceResolver = (scope, iface, callback )->
+  console.log "Resolving interface:", iface
+  callback( null, iface)
 #methodSetBodyResolver = (scope, methodSet, callback)->
   #methodSetOut = _.clone(methodSet)
   ## Prepare the scope for our parent

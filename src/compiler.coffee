@@ -7,7 +7,7 @@ async = require 'async'
 #parser_helper = require './parser_helper'
 tree_parser = require './tree_parser/tree_parser'
 #templates = require './templates'
-builder = require './builder'
+builder = require './builder/builder'
 
 
 packaging = require './packaging'
@@ -17,27 +17,35 @@ resolver = require './resolver/resolver'
 parser_map = require './parser_mapreducer/parser_map'
 resolver = require './parser_mapreducer/resolver'
 
-# Compile a list of package. For options, see bin/tcc-parser
-compile_packages = (packageList, options, callback)->
+withRoot = (options, callback)->
   root = new packaging.Root( options.root )
   winston.info "Inside '#{path.normalize(root.dir)}'"
-  parser_map.parsePackageList root, packageList, options, (err, packages)->
-    return callback(err, []) if err
-    # Stop going forward if the type tree is requested
-    if options.saveTypeTree
-      return saveTypeTree root, packages, (err, files)->
-        callback( err, files )
+  callback(null,root)
 
-    # time to resolve the packages
-    resolver.resolvePackageList packages, (err, resolved_packages)->
+# Compile a list of package. For options, see bin/tcc-parser
+compile_packages = (packageList, options, callback)->
+  withRoot options, (err, root)->
+    parser_map.parsePackageList root, packageList, options, (err, packages)->
       return callback(err, []) if err
-      if options.saveNormalizedForm
-        return saveNormalizedForm root, resolved_packages, (err, files)->
+      # Stop going forward if the type tree is requested
+      if options.saveTypeTree
+        return saveTypeTree root, packages, (err, files)->
           callback( err, files )
 
-      # We are finished
-      callback( err, [] )
+      # time to resolve the packages
+      resolver.resolvePackageList packages, (err, resolved_packages)->
+        return callback(err, []) if err
+        if options.saveNormalizedForm
+          return saveNormalizedForm root, resolved_packages, (err, files)->
+            callback( err, files )
 
+        # We are finished
+        callback( err, [] )
+
+buildPackages = (packageList, options, callback)->
+  withRoot options, (err, root)->
+    builder.buildOutput root, packageList, options, (err, files)->
+      callback(err, files)
 
 # resolve and build a single package
 # TODO: handle inter-package dependencies (imports) here
@@ -70,7 +78,7 @@ saveNormalizedForm = ( root, resolved_packages, callback )->
   writePackage = (pack, callback)->
     #console.log pack
     packageDir = root.getOrCreate pack.name
-    packageDir.output_json "../#{pack.name}.normalized.json", pack, (err, filePath, contents)->
+    packageDir.outputNormalizedFile pack, (err, filePath, contents)->
       callback( err, filePath )
 
   async.map resolved_packages, writePackage, (err, filePaths)->
@@ -78,4 +86,5 @@ saveNormalizedForm = ( root, resolved_packages, callback )->
 
 module.exports =
   compile_packages: compile_packages
+  buildPackages: buildPackages
 
