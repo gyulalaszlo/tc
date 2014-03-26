@@ -1,58 +1,18 @@
-# TC
+TC
+==
 
 A Work in progress experimental language that:
 - focuses on low-level tasks that require allocation management
 - yet provides high-level idioms like blocks
 - (hopefully) can compile to production quality C or C++ code
 
-# Structure of a tc package
 
-While tc isnt designed for writing complete programs, a package doing the familiar "Hello World" would in look something like this:
-
-    package hello;
-
-    imports = {
-      "logger"
-    }
-
-    SayHello = fn( logger.Log& log ) {
-      log.Info( "Hello World!" );
-    }
-
-## The first line
-
-    package hello;
-
-tells that you are writing the stuff for the package (and not the tests for example). The package name is the name of the directory the package resides in (aka. the last path part of the import string).
+Types
+=====
 
 
-## The imports
-
-    imports = {
-      "logger"
-    }
-
-Once upon a time, C++ used to #include files. And managing them became a burdensome job the larger the a project grew.
-
-The classic problem with C (and C++) is that all declarations in a program are declared in the same namespace, and without any controll over remote packages, naming things just became too important.
-
-Tc tries to solve (parts of) this issue by packing types and methods into "packages", and using imports to resolve references between packages. By importing the package "logger" all types and methods exported by logger are available through the "logger." symbol.
-
-## Saying something
-
-    SayHello = fn( logger.Log& log ) {
-      log.Info( "Hello World!" );
-    }
-
-Here we define a simple function called "SayHello" that takes a
-reference named "log" of type "Log" from the package "logger".
-
-The next line simply calls the "Info" method of "log" with our desired
-output.
-
-
-
-# Basic types
+Basic types
+-----------
 
 Basic types are your bog standard primitive data types for storing
 values. They are directly mapped to the underlying C types.
@@ -78,12 +38,15 @@ The built in datatypes for floating point values:
     type f32 = C float
 
 
-# Blobs
+Blobs
+-----
 
 
-# Structs
 
-## What is a struct?
+Structs
+-------
+
+What is a struct?
 
 Structs are the data in "data + methods != state + methods".
 
@@ -117,7 +80,8 @@ can be copied without any construction involved.
 
 
 
-# Classes
+Classes
+-------
 
 ## What is a class?
 
@@ -149,7 +113,7 @@ created by value, but rather by invoking their construction:
       """ Create a blank histogram. """
       Constructor = ()-> { }
 
-      """ Create a histogram by using the passed values as base. """ 
+      """ Create a histogram by using the passed values as base. """
       Constructor = ( @values: U32[256] )-> { }
 
 
@@ -162,9 +126,10 @@ created by value, but rather by invoking their construction:
     //...
     swapper := U32Swapper( )
 
-# Mixins
+Mixins
+------
 
-## What is a Mixin?
+### What is a Mixin?
 
 Mixins are the inverse concept of interfaces: they aim to provide common
 functionality for structs of many different types.
@@ -183,7 +148,7 @@ Later we can define methods on this mixin
       say = (what:CStr)-> { console.Log( "%s %s", what, @name ); }
     }
 
-## Extending Structs with Mixins
+### Extending Structs with Mixins
 
 Now that we have our Person mixin ready, we need something to include it
 into.
@@ -221,6 +186,137 @@ the situations with templates as seen on the following example.
 Here TC understands that what you really want to say is:
 
     // for each 'T' I you use 'List<T*>' for
-    extend List<T*> with PointerList<T,U32> 
+    extend List<T*> with PointerList<T,U32>
 
+
+
+Type conversions
+================
+
+There are some simple rules governing type conversions in tc.
+
+
+Implicit type conversions
+-------------------------
+
+There are only a few cases of implicit type conversions, and these are
+only for the built-in types:
+
+- unsigned integer types (U8, U16, U32, U64) can be implicitly converted
+  to any unsigned type T if T is wider then the base type (so U16 can be
+  converted to U32, U64, but not U8)
+
+- signed integer types (I8, I16, I32, I64) can be implicitly converted
+  to any signed integer type T if T is wider then the base type (so I16 can be
+  converted to I32, I64, but not I8)
+
+- F32 can be implicitly converted to F64
+
+If the target type is narrower then the source type, the conversion is
+destructive, so tc requires you to cast it manually.
+
+
+Casting
+-------
+
+Casting is really simple:
+
+    bar := Bar(foo)
+
+
+The allowed casts:
+
+- converting between signed and unsigned integral types results in the
+  equal C conversion happening
+
+- conversion between floating point and integral types results in the
+  equal C cast happening
+
+- pointers can be converted to any other pointer type, so casting
+  between pointer types is an unsafe and incredibly useful operation
+
+- casting to a struct by value to another struct by default creates
+  a blank output object and copies any matching fields (fields with the
+  same name and type)
+
+
+Arithmetic casts
+----------------
+
+During arithmetic operations the following rules apply:
+
+For binary operations where types differ ()
+
+    '+', '-', '/', '*', '+=', '-=', ...
+
+- as long as both operands are of the same basic type class (either
+  signed int, unsigned int or float), the output is the widest of the
+  operands
+
+- if they are not of the same basic type class, manually casting one of
+  the operands is required.
+
+
+
+
+
+
+
+
+
+
+Structure of a tc package
+=========================
+
+While tc isnt designed for writing complete programs, a package doing
+the familiar "Hello World" would in look something like this:
+
+    package hello;
+
+    imports = {
+      "logger"
+    }
+
+    SayHello = fn( logger.Log& log ) {
+      log.Info( "Hello World!" );
+    }
+
+## The first line
+
+    package hello;
+
+tells that you are writing the stuff for the package (and not the tests
+for example). The package name is the name of the directory the package
+resides in (aka. the last path part of the import string).
+
+
+## The imports
+
+    imports = {
+      "logger"
+    }
+
+Once upon a time, C++ used to #include files. And managing them became a
+burdensome job the larger the a project grew.
+
+The classic problem with C (and C++) is that all declarations in a
+program are declared in the same namespace, and without any controll
+over remote packages, naming things just became too important.
+
+Tc tries to solve (parts of) this issue by packing types and methods
+into "packages", and using imports to resolve references between
+packages. By importing the package "logger" all types and methods
+exported by logger are available through the "logger." symbol.
+
+## Saying something
+
+    SayHello = fn( logger.Log& log ) {
+      log.Info( "Hello World!" );
+    }
+
+Here we define a simple function called "SayHello" that takes a
+reference named "log" of type "Log" from the package "logger".
+
+The next line simply calls the "Info" method of "log" with our desired
+output.
 
